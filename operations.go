@@ -28,8 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 		}
 	} else if err != nil {
 		sLogger.Errorf("failed to read changelog file %s", options.ChangelogFile)
-		sLogger.Error(err.Error())
-		os.Exit(ioError)
+		sLogger.Fatal(err.Error())
 	}
 
 	machineOptions := []conventionalcommits.MachineOption{
@@ -40,9 +39,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	// SETUP MACHINE
 	sLogger.Info(machine)
 
-	stdOut, _, err := gitRemote(options.GitWorkingDirectory)
+	stdOut, err := gitRemote(options.GitWorkingDirectory)
 	sLogger.Info(*stdOut)
 	if err != nil {
 		sLogger.Error(err.Error())
+	}
+}
+
+func update() {
+	var options UpdateOptions
+	parseOptions(&options)
+
+	if options.GitBranch != "" {
+		if err := gitCheckout(options.GitBranch, options.GitWorkingDirectory); err != nil {
+			sLogger.Fatal(err.Error())
+		}
 	}
 }
