@@ -62,6 +62,7 @@ func (c *change) renderChangeText(increment ...string) {
 	appendSection(changeSecurity, c.Security)
 
 	text := sb.String()
+	text = text[:len(text)-1]
 	c.Text = &text
 
 	sLogger.Debug("rendered new release text as:")

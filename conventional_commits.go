@@ -49,7 +49,7 @@ func getConventionalCommitType(message string) *conventionalCommitType {
 }
 
 func parseConventionalCommitMessages(commitMessages ...string) (*string, map[int]conventionalCommitType) {
-	increment := ""
+	var increment string
 	mappedTypes := map[int]conventionalCommitType{}
 	machineOptions := []conventionalcommits.MachineOption{
 		conventionalcommits.WithTypes(conventionalcommits.TypesConventional),
@@ -84,6 +84,10 @@ func parseConventionalCommitMessages(commitMessages ...string) (*string, map[int
 				increment = PATCH
 			}
 		}
+	}
+
+	if increment == "" {
+		sLogger.Fatal("failed to find an increment for a change")
 	}
 
 	return &increment, mappedTypes

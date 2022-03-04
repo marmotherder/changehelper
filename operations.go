@@ -103,6 +103,12 @@ func update() {
 		if err != nil {
 			sLogger.Fatal(err.Error())
 		}
+		selfCommit, err := listGitCommits(options.GitWorkingDirectory, "-n 1 "+*lastCommit)
+		if err != nil {
+			sLogger.Fatal(err.Error())
+		}
+
+		commits = append(commits, selfCommit...)
 
 		var commitMessages []string
 		for _, commit := range commits {
@@ -162,19 +168,27 @@ func update() {
 		}
 
 		for fixed, message := range fixedUnique {
-			unreleased.Fixed = append(unreleased.Fixed, fmt.Sprintf("- %s; %s", fixed, message))
+			if options.GitWorkingDirectory+fixed != options.ChangelogFile {
+				unreleased.Fixed = append(unreleased.Fixed, fmt.Sprintf("- %s; %s", fixed, message))
+			}
 		}
 
 		for added, message := range addedUnique {
-			unreleased.Added = append(unreleased.Added, fmt.Sprintf("- %s; %s", added, message))
+			if options.GitWorkingDirectory+added != options.ChangelogFile {
+				unreleased.Added = append(unreleased.Added, fmt.Sprintf("- %s; %s", added, message))
+			}
 		}
 
 		for changed, message := range changedUnique {
-			unreleased.Changed = append(unreleased.Changed, fmt.Sprintf("- %s; %s", changed, message))
+			if options.GitWorkingDirectory+changed != options.ChangelogFile {
+				unreleased.Changed = append(unreleased.Changed, fmt.Sprintf("- %s; %s", changed, message))
+			}
 		}
 
 		for removed, message := range removedUnique {
-			unreleased.Removed = append(unreleased.Removed, fmt.Sprintf("- %s; %s", removed, message))
+			if options.GitWorkingDirectory+removed != options.ChangelogFile {
+				unreleased.Removed = append(unreleased.Removed, fmt.Sprintf("- %s; %s", removed, message))
+			}
 		}
 
 		unreleased.renderChangeText(*increment)
@@ -203,6 +217,10 @@ func update() {
 		sLogger.Debug(*unreleased.Text)
 	}
 
+	if unreleased.Version == nil {
+		unreleased.Version = latestRelease.Version
+	}
+
 	unreleased.Version.Major = latestRelease.Version.Major
 	unreleased.Version.Minor = latestRelease.Version.Minor
 	unreleased.Version.Patch = latestRelease.Version.Patch
@@ -224,10 +242,10 @@ func update() {
 	sb := strings.Builder{}
 	sb.WriteString(changelogHeader)
 	unreleasedTextLines := strings.SplitN(*unreleased.Text, "\n", 2)
-	sb.WriteString("## [Unreleased] - " + time.Now().Format("2006-01-02"))
+	sb.WriteString(fmt.Sprintf("## [%s] - %s", unreleased.Version.String(), time.Now().Format("2006-01-02")))
 	sb.WriteString("\n")
 	sb.WriteString(unreleasedTextLines[1])
-	sb.WriteString("\n")
+	sb.WriteString("\n\n")
 
 	for _, release := range released {
 		sb.WriteString(*release.Text)
