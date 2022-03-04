@@ -36,8 +36,14 @@ type NewVersionOptions struct {
 	Security            []string `short:"s" long:"security" description:"What was security related in this new release?"`
 }
 
+type GitLookupOptions struct {
+	GitEvaluate         bool   `short:"e" long:"git-evaluate" description:"Should git branches be evaluated when calcuating the most recent version?"`
+	GitWorkingDirectory string `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
+	GitPrefix           string `short:"p" long:"git-prefix" description:"The branch name prefix for releases" default:"release"`
+}
+
 type UpdateOptions struct {
 	GlobalOptions
-	GitBranch           string `short:"b" long:"git-branch" description:"Git branch to run against"`
-	GitWorkingDirectory string `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
+	GitLookupOptions
+	GitBranch string `short:"b" long:"git-branch" description:"Git branch to run against"`
 }
