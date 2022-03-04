@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/blang/semver"
 	"github.com/leodido/go-conventionalcommits"
@@ -109,8 +110,25 @@ func update() {
 
 		for _, commitMessage := range commitMessages {
 			ccMessage, err := machine.Parse([]byte(commitMessage))
-			sLogger.Debug(ccMessage)
-			sLogger.Debug(err)
+			if err != nil {
+				sLogger.Debugf("failed to parse commit '%s' as conventional commit: %s", commitMessage, err.Error())
+				continue
+			}
+			if !ccMessage.Ok() {
+				continue
+			}
+			var ccIncrement string
+			if ccMessage.IsBreakingChange() {
+				ccIncrement = MAJOR
+			} else if ccIncrement != MAJOR {
+				if strings.Contains(commitMessage, "feat: ") {
+					ccIncrement = MINOR
+				} else if ccIncrement != MINOR {
+					ccIncrement = PATCH
+				}
+			}
+
+			increment = &ccIncrement
 		}
 	}
 
