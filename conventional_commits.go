@@ -92,3 +92,79 @@ func parseConventionalCommitMessages(commitMessages ...string) (*string, map[int
 
 	return &increment, mappedTypes
 }
+
+func resolveConventionalCommits(dir, changelogFile string) (*string, map[string]string, map[string]string, map[string]string, map[string]string, error) {
+	lastCommit, err := getLastModifiedCommit(dir, changelogFile)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	commits, err := listGitCommits(dir, *lastCommit+"..")
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+	selfCommit, err := listGitCommits(dir, "-n 1 "+*lastCommit)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+
+	commits = append(commits, selfCommit...)
+
+	var commitMessages []string
+	for _, commit := range commits {
+		commitMessages = append(commitMessages, commit.Message)
+	}
+
+	increment, mappedTypes := parseConventionalCommitMessages(commitMessages...)
+
+	fixedUnique := map[string]string{}
+	addedUnique := map[string]string{}
+	changedUnique := map[string]string{}
+	removedUnique := map[string]string{}
+	for idx, ccType := range mappedTypes {
+		commit := commits[idx]
+
+		diff, err := getGitRefChanges(dir, commit.Hash)
+		if err != nil {
+			sLogger.Warnf("failed to read changes for commit %s, changes will not be recorded in changelog", commit.Hash)
+		}
+
+		switch ccType {
+		case conventionalCommitFix:
+			for _, changed := range diff.Changed {
+				if existing, ok := fixedUnique[changed]; ok {
+					fixedUnique[changed] = existing + ", " + commit.Message
+				} else {
+					fixedUnique[changed] = commit.Message
+				}
+			}
+			fallthrough
+		default:
+			for _, added := range diff.Added {
+				if existing, ok := addedUnique[added]; ok {
+					addedUnique[added] = existing + ", " + commit.Message
+				} else {
+					addedUnique[added] = commit.Message
+				}
+			}
+			if ccType != conventionalCommitFix {
+				for _, changed := range diff.Changed {
+					if existing, ok := changedUnique[changed]; ok {
+						changedUnique[changed] = existing + ", " + commit.Message
+					} else {
+						changedUnique[changed] = commit.Message
+					}
+				}
+			}
+			for _, removed := range diff.Removed {
+				if existing, ok := removedUnique[removed]; ok {
+					removedUnique[removed] = existing + ", " + commit.Message
+				} else {
+					removedUnique[removed] = commit.Message
+				}
+			}
+		}
+	}
+
+	return increment, fixedUnique, addedUnique, changedUnique, removedUnique, nil
+}
