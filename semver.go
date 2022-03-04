@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/blang/semver"
-	"github.com/yuin/goldmark/ast"
 )
 
 const (
@@ -12,11 +11,11 @@ const (
 )
 
 func getLatestRelease(released []change) *change {
-	nodeMap := map[string]ast.Node{}
+	changeMap := map[string]change{}
 	releasedVersions := make([]semver.Version, 0)
 
 	for _, change := range released {
-		nodeMap[change.Version.String()] = change.Node
+		changeMap[change.Version.String()] = change
 		releasedVersions = append(releasedVersions, *change.Version)
 	}
 
@@ -26,17 +25,11 @@ func getLatestRelease(released []change) *change {
 
 	semver.Sort(releasedVersions)
 
-	if node, ok := nodeMap[releasedVersions[0].String()]; ok {
-		return &change{
-			Version: &releasedVersions[0],
-			Node:    node,
-		}
+	if change, ok := changeMap[releasedVersions[0].String()]; ok {
+		return &change
 	}
 
-	return &change{
-		Version: &releasedVersions[0],
-		Node:    nil,
-	}
+	return nil
 }
 
 func listReleasedVersionFromGit(dir, prefix string, remotes ...string) ([]semver.Version, error) {

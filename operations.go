@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 
@@ -41,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 	// SETUP MACHINE
 	sLogger.Info(machine)
 
-	stdOut, err := gitRemote(options.GitWorkingDirectory)
+	stdOut, err := getGitRemote(options.GitWorkingDirectory)
 	sLogger.Info(*stdOut)
 	if err != nil {
 		sLogger.Error(err.Error())
@@ -51,6 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 func update() {
 	var options UpdateOptions
 	parseOptions(&options)
+
+	defaultVersion := semver.MustParse("0.0.0")
 
 	if options.GitBranch != "" {
 		if err := gitCheckout(options.GitBranch, options.GitWorkingDirectory); err != nil {
@@ -74,7 +77,7 @@ func update() {
 		for _, gitVersion := range gitVersions {
 			released = append(released, change{
 				Version: &gitVersion,
-				Node:    nil,
+				Text:    nil,
 			})
 		}
 	}
@@ -84,52 +87,88 @@ func update() {
 		foundLatestRelease := getLatestRelease(released)
 		latestRelease = *foundLatestRelease
 	} else {
-		defaultVersion := semver.MustParse("0.0.0")
 		latestRelease = change{
 			Version: &defaultVersion,
-			Node:    nil,
+			Text:    nil,
 		}
 	}
 
 	if unreleased == nil {
+		unreleased = &change{
+			Version: &defaultVersion,
+		}
+
 		lastCommit, err := getLastModifiedCommit(options.GitWorkingDirectory, options.ChangelogFile)
 		if err != nil {
 			sLogger.Fatal(err.Error())
 		}
 
-		commitMessages, err := gitCommitMessages(options.GitWorkingDirectory, *lastCommit+"..")
+		commits, err := listGitCommits(options.GitWorkingDirectory, *lastCommit+"..")
 		if err != nil {
 			sLogger.Fatal(err.Error())
 		}
 
-		machineOptions := []conventionalcommits.MachineOption{
-			conventionalcommits.WithTypes(conventionalcommits.TypesConventional),
-			conventionalcommits.WithBestEffort(),
+		var commitMessages []string
+		for _, commit := range commits {
+			commitMessages = append(commitMessages, commit.Message)
 		}
-		machine := parser.NewMachine(machineOptions...)
 
-		for _, commitMessage := range commitMessages {
-			ccMessage, err := machine.Parse([]byte(commitMessage))
+		var mappedTypes map[int]conventionalCommitType
+		increment, mappedTypes = parseConventionalCommitMessages(commitMessages...)
+
+		for idx, ccType := range mappedTypes {
+			commit := commits[idx]
+
+			diff, err := getGitRefChanges(options.GitWorkingDirectory, commit.Hash)
 			if err != nil {
-				sLogger.Debugf("failed to parse commit '%s' as conventional commit: %s", commitMessage, err.Error())
-				continue
+				sLogger.Warnf("failed to read changes for commit %s, changes will not be recorded in changelog", commit.Hash)
 			}
-			if !ccMessage.Ok() {
-				continue
-			}
-			var ccIncrement string
-			if ccMessage.IsBreakingChange() {
-				ccIncrement = MAJOR
-			} else if ccIncrement != MAJOR {
-				if strings.Contains(commitMessage, "feat: ") {
-					ccIncrement = MINOR
-				} else if ccIncrement != MINOR {
-					ccIncrement = PATCH
+
+			switch ccType {
+			case conventionalCommitFix:
+				for _, changed := range diff.Changed {
+					unreleased.Fixed = append(unreleased.Fixed, fmt.Sprintf("- %s; %s", changed, commit.Hash))
+				}
+				fallthrough
+			default:
+				for _, added := range diff.Added {
+					unreleased.Added = append(unreleased.Added, fmt.Sprintf("- %s; %s", added, commit.Hash))
+				}
+				if ccType != conventionalCommitFix {
+					for _, changed := range diff.Changed {
+						unreleased.Changed = append(unreleased.Changed, fmt.Sprintf("- %s; %s", changed, commit.Hash))
+					}
+				}
+				for _, removed := range diff.Removed {
+					unreleased.Removed = append(unreleased.Removed, fmt.Sprintf("- %s; %s", removed, commit.Hash))
 				}
 			}
-
-			increment = &ccIncrement
 		}
+
+		unreleased.renderChangeText(*increment)
+	}
+
+	if increment == nil {
+		combinedMessages := []string{}
+		combineCommits := func(messages []string) {
+			for _, message := range messages {
+				combinedMessages = append(combinedMessages, strings.TrimPrefix(message, "- "))
+			}
+		}
+		combineCommits(unreleased.Added)
+		combineCommits(unreleased.Changed)
+		combineCommits(unreleased.Deprecated)
+		combineCommits(unreleased.Fixed)
+		combineCommits(unreleased.Removed)
+		combineCommits(unreleased.Security)
+
+		increment, _ = parseConventionalCommitMessages(combinedMessages...)
+
+		if increment == nil {
+			sLogger.Fatal("there is a pending release without a version in changelog, but was unable to determine it from messages")
+		}
+
+		sLogger.Debug(*unreleased.Text)
 	}
 
 	unreleased.Version.Major = latestRelease.Version.Major

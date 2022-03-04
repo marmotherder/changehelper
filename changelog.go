@@ -36,6 +36,9 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 	changelogNode := goldmark.DefaultParser().Parse(text.NewReader(changelog))
 
 	current := changelogNode.FirstChild()
+	var currentChange *change
+	var currentChangeType changeType
+	currentChangeType = ""
 	for {
 		if current == nil {
 			break
@@ -50,9 +53,10 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 			}
 
 			unreleased = &change{
-				Version: nil,
-				Node:    current,
+				Version:     nil,
+				VersionText: nodeText(current, changelog),
 			}
+			currentChange = unreleased
 		}
 		if unreleasedIncrementRegex.MatchString(currentText) {
 			if unreleased != nil {
@@ -65,11 +69,14 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 			increment = &upperIncrement
 
 			unreleased = &change{
-				Version: nil,
-				Node:    current,
+				Version:     nil,
+				VersionText: nodeText(current, changelog),
 			}
+			currentChange = unreleased
 		}
 		if releasedRegex.MatchString(currentText) {
+			currentChange = nil
+			currentChangeType = ""
 			extractedVersion := versionRegex.FindAllString(string(current.Text(changelog)), -1)
 			if len(extractedVersion) > 0 {
 				cleanVersion := strings.ReplaceAll(strings.ReplaceAll(extractedVersion[0], "[", ""), "]", "")
@@ -79,10 +86,46 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 					sLogger.Warn(currentText)
 					sLogger.Warn(parseError.Error())
 				} else {
-					released = append(released, change{
-						Version: &version,
-						Node:    current,
-					})
+					releasedChange := change{
+						Version:     &version,
+						VersionText: nodeText(current, changelog),
+					}
+					currentChange = &releasedChange
+					released = append(released, releasedChange)
+				}
+			}
+		}
+
+		if currentChange != nil {
+			switch currentText {
+			case strings.ToLower(string(changeAdded)):
+				currentChangeType = changeAdded
+			case strings.ToLower(string(changeChanged)):
+				currentChangeType = changeChanged
+			case strings.ToLower(string(changeDeprecated)):
+				currentChangeType = changeDeprecated
+			case strings.ToLower(string(changeRemoved)):
+				currentChangeType = changeRemoved
+			case strings.ToLower(string(changeFixed)):
+				currentChangeType = changeFixed
+			case strings.ToLower(string(changeSecurity)):
+				currentChangeType = changeSecurity
+			default:
+				if currentChangeType != "" {
+					switch currentChangeType {
+					case changeAdded:
+						currentChange.Added = append(currentChange.Added, *nodeText(current, changelog))
+					case changeChanged:
+						currentChange.Changed = append(currentChange.Changed, *nodeText(current, changelog))
+					case changeDeprecated:
+						currentChange.Deprecated = append(currentChange.Deprecated, *nodeText(current, changelog))
+					case changeRemoved:
+						currentChange.Removed = append(currentChange.Removed, *nodeText(current, changelog))
+					case changeFixed:
+						currentChange.Fixed = append(currentChange.Fixed, *nodeText(current, changelog))
+					case changeSecurity:
+						currentChange.Security = append(currentChange.Security, *nodeText(current, changelog))
+					}
 				}
 			}
 		}
