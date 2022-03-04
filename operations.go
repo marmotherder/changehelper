@@ -91,7 +91,12 @@ func update() {
 	}
 
 	if unreleased == nil {
-		commitMessages, err := gitCommitMessages(options.GitWorkingDirectory)
+		lastCommit, err := getLastModifiedCommit(options.GitWorkingDirectory, options.ChangelogFile)
+		if err != nil {
+			sLogger.Fatal(err.Error())
+		}
+
+		commitMessages, err := gitCommitMessages(options.GitWorkingDirectory, *lastCommit+"..")
 		if err != nil {
 			sLogger.Fatal(err.Error())
 		}

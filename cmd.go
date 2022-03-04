@@ -51,13 +51,13 @@ func runCommand(dir, name string, arg ...string) (*string, int, error) {
 	sbStdErr := strings.Builder{}
 	go func() {
 		for scannerStdErr.Scan() {
-			sbStdErr.WriteString(fmt.Sprintf("%s\n", scannerStdErr.Text()))
+			sbStdErr.WriteString(fmt.Sprintf("%s\n", strings.TrimSpace(scannerStdErr.Text())))
 		}
 	}()
 
 	cmd.Wait()
 
-	stdOutString := sbStdOut.String()
+	stdOutString := strings.TrimSpace(sbStdOut.String())
 
 	if sbStdErr.String() != "" {
 		sLogger.Error(sbStdErr.String())

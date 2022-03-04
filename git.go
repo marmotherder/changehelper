@@ -46,15 +46,34 @@ func gitCheckout(ref, dir string) error {
 	return err
 }
 
-func gitCommitMessages(dir string) ([]string, error) {
+func gitCommitMessages(dir string, commitRange ...string) ([]string, error) {
 	sLogger.Debug("looking up git commit messages")
-	stdOut, _, err := runCommand(dir, gitCmd, "log", `--pretty=format:"%s"`)
+	stdOut, _, err := runCommand(dir, gitCmd, append([]string{"log", `--pretty=format:"%s"`}, commitRange...)...)
 	if err != nil {
 		sLogger.Error("failed to run git log")
 		return nil, err
 	}
 
-	return strings.Split(*stdOut, "\n"), nil
+	tidyCommitMessages := make([]string, 0)
+	commitMessages := strings.Split(*stdOut, "\n")
+	for _, commitMessage := range commitMessages {
+		if commitMessage != "" && commitMessage != "\"\"" {
+			tidyCommitMessages = append(tidyCommitMessages, commitMessage[1:len(commitMessage)-1])
+		}
+	}
+
+	return tidyCommitMessages, nil
+}
+
+func getLastModifiedCommit(dir, path string) (*string, error) {
+	sLogger.Debug("looking up most recent commit for %s", path)
+	stdOut, _, err := runCommand(dir, gitCmd, "log", "-n", "1", "--pretty=format:%H", "--", path)
+	if err != nil {
+		sLogger.Error("failed to run git log")
+		return nil, err
+	}
+
+	return stdOut, nil
 }
 
 func listRemoteGitBranches(dir, prefix string, remotes ...string) ([]string, error) {
