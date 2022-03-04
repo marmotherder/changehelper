@@ -8,8 +8,15 @@ const (
 	GitDeleted  = "D"
 )
 
-func gitRemote(dir string) (*string, int, error) {
+func gitRemote(dir string) (*string, error) {
 	sLogger.Debug("looking up git remotes")
-	stdOut, exitCode, err := runCommand(dir, gitCmd, "remote")
-	return stdOut, exitCode, err
+	stdOut, _, err := runCommand(dir, gitCmd, "remote")
+	return stdOut, err
+}
+
+func gitCheckout(ref, dir string) error {
+	sLogger.Debug("looking up git remotes")
+	stdOut, _, err := runCommand(dir, gitCmd, "checkout", ref)
+	sLogger.Info(*stdOut)
+	return err
 }

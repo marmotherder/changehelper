@@ -35,3 +35,9 @@ type NewVersionOptions struct {
 	Fixed               []string `short:"x" long:"fixed" description:"What was fixed in this new release?"`
 	Security            []string `short:"s" long:"security" description:"What was security related in this new release?"`
 }
+
+type UpdateOptions struct {
+	GlobalOptions
+	GitBranch           string `short:"b" long:"git-branch" description:"Git branch to run against"`
+	GitWorkingDirectory string `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
+}

@@ -63,5 +63,7 @@ func runCommand(dir, name string, arg ...string) (*string, int, error) {
 		sLogger.Error(sbStdErr.String())
 	}
 
+	sLogger.Infof("exited with code %d", cmd.ProcessState.ExitCode())
+
 	return &stdOutString, cmd.ProcessState.ExitCode(), nil
 }

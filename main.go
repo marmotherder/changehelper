@@ -62,10 +62,19 @@ func main() {
 	operation := args[1]
 
 	switch operation {
-	case "version":
-		fmt.Print(version)
+
 	case "new-version":
 		newVersion()
+	case "print-current",
+		"print-unreleased":
+		sLogger.Fatal("operation is unimplemented")
+	case "update":
+		update()
+	case "release",
+		"update-and-release":
+		sLogger.Fatal("operation is unimplemented")
+	case "version":
+		fmt.Print(version)
 	default:
 		fmt.Println(operationsText)
 		os.Exit(execError)
