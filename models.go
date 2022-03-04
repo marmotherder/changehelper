@@ -50,7 +50,7 @@ func (c *change) renderChangeText(increment ...string) {
 	appendSection := func(text changeType, section []string) {
 		if len(section) > 0 {
 			sb.WriteString(fmt.Sprintf("### %s\n", text))
-			sb.WriteString(fmt.Sprintf("%s\n\n", strings.Join(section, "\n")))
+			sb.WriteString(fmt.Sprintf("%s\n", strings.Join(section, "\n")))
 		}
 	}
 

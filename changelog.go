@@ -11,10 +11,24 @@ import (
 	"github.com/yuin/goldmark/text"
 )
 
-func parseChangelog(changelogFile string) (changelog []byte, unreleased *change, increment *string, released []change, err error) {
+const changelogHeader = `# Changelog
+All notable changes to this project will be documented in this file.
+		
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+`
+
+const (
+	releasePrefix = "## "
+	changePrefix  = "### "
+	linePrefix    = "- "
+)
+
+func parseChangelog(changelogFile string) (changelog []byte, unreleased *change, increment *string, released []*change, err error) {
 	sLogger.Infof("reading the changelog file %s for parsing", changelogFile)
 
-	released = make([]change, 0)
+	released = make([]*change, 0)
 
 	changelog, err = readChangelogFile(changelogFile)
 	if err != nil {
@@ -45,6 +59,7 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 		}
 
 		currentText := strings.ReplaceAll(strings.TrimSpace(strings.ToLower(string(current.Text(changelog)))), " ", "")
+		prefix := ""
 
 		if unreleasedRegex.MatchString(currentText) {
 			if unreleased != nil {
@@ -86,48 +101,69 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 					sLogger.Warn(currentText)
 					sLogger.Warn(parseError.Error())
 				} else {
-					releasedChange := change{
+					releasedChange := &change{
 						Version:     &version,
 						VersionText: nodeText(current, changelog),
 					}
-					currentChange = &releasedChange
+					prefix = releasePrefix
+					currentChange = releasedChange
 					released = append(released, releasedChange)
 				}
 			}
 		}
 
 		if currentChange != nil {
+			text := *nodeText(current, changelog)
+
 			switch currentText {
 			case strings.ToLower(string(changeAdded)):
 				currentChangeType = changeAdded
+				prefix = changePrefix
 			case strings.ToLower(string(changeChanged)):
 				currentChangeType = changeChanged
+				prefix = changePrefix
 			case strings.ToLower(string(changeDeprecated)):
 				currentChangeType = changeDeprecated
+				prefix = changePrefix
 			case strings.ToLower(string(changeRemoved)):
 				currentChangeType = changeRemoved
+				prefix = changePrefix
 			case strings.ToLower(string(changeFixed)):
 				currentChangeType = changeFixed
+				prefix = changePrefix
 			case strings.ToLower(string(changeSecurity)):
 				currentChangeType = changeSecurity
+				prefix = changePrefix
 			default:
 				if currentChangeType != "" {
 					switch currentChangeType {
 					case changeAdded:
-						currentChange.Added = append(currentChange.Added, *nodeText(current, changelog))
+						currentChange.Added = append(currentChange.Added, text)
+						prefix = linePrefix
 					case changeChanged:
-						currentChange.Changed = append(currentChange.Changed, *nodeText(current, changelog))
+						currentChange.Changed = append(currentChange.Changed, text)
+						prefix = linePrefix
 					case changeDeprecated:
-						currentChange.Deprecated = append(currentChange.Deprecated, *nodeText(current, changelog))
+						currentChange.Deprecated = append(currentChange.Deprecated, text)
+						prefix = linePrefix
 					case changeRemoved:
-						currentChange.Removed = append(currentChange.Removed, *nodeText(current, changelog))
+						currentChange.Removed = append(currentChange.Removed, text)
+						prefix = linePrefix
 					case changeFixed:
-						currentChange.Fixed = append(currentChange.Fixed, *nodeText(current, changelog))
+						currentChange.Fixed = append(currentChange.Fixed, text)
+						prefix = linePrefix
 					case changeSecurity:
-						currentChange.Security = append(currentChange.Security, *nodeText(current, changelog))
+						currentChange.Security = append(currentChange.Security, text)
+						prefix = linePrefix
 					}
 				}
 			}
+
+			fullText := prefix + text
+			if currentChange.Text != nil {
+				fullText = *currentChange.Text + "\n" + prefix + text
+			}
+			currentChange.Text = &fullText
 		}
 
 		current = current.NextSibling()

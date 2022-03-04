@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/leodido/go-conventionalcommits"
@@ -18,12 +19,7 @@ func newVersion() {
 	sLogger.Infof("checking if changelog file %s exists", options.ChangelogFile)
 	if _, err := os.Stat(options.ChangelogFile); err != nil && errors.Is(err, os.ErrNotExist) {
 		sLogger.Info("changelog file does not exist, attempting to create a new one instead")
-		contents := `# Changelog
-All notable changes to this project will be documented in this file.
-		
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-`
+		contents := changelogHeader
 
 		if err := os.WriteFile(options.ChangelogFile, []byte(contents), 0644); err != nil {
 			sLogger.Errorf("failed to create changelog file %s", options.ChangelogFile)
@@ -61,7 +57,7 @@ func update() {
 		}
 	}
 
-	changelog, unreleased, increment, released, err := parseChangelog(options.ChangelogFile)
+	_, unreleased, increment, released, err := parseChangelog(options.ChangelogFile)
 	if err != nil {
 		sLogger.Error("failed to parse the changelog file")
 		sLogger.Fatal(err.Error())
@@ -75,7 +71,7 @@ func update() {
 		}
 
 		for _, gitVersion := range gitVersions {
-			released = append(released, change{
+			released = append(released, &change{
 				Version: &gitVersion,
 				Text:    nil,
 			})
@@ -116,6 +112,10 @@ func update() {
 		var mappedTypes map[int]conventionalCommitType
 		increment, mappedTypes = parseConventionalCommitMessages(commitMessages...)
 
+		fixedUnique := map[string]string{}
+		addedUnique := map[string]string{}
+		changedUnique := map[string]string{}
+		removedUnique := map[string]string{}
 		for idx, ccType := range mappedTypes {
 			commit := commits[idx]
 
@@ -127,22 +127,54 @@ func update() {
 			switch ccType {
 			case conventionalCommitFix:
 				for _, changed := range diff.Changed {
-					unreleased.Fixed = append(unreleased.Fixed, fmt.Sprintf("- %s; %s", changed, commit.Hash))
+					if existing, ok := fixedUnique[changed]; ok {
+						fixedUnique[changed] = existing + ", " + commit.Message
+					} else {
+						fixedUnique[changed] = commit.Message
+					}
 				}
 				fallthrough
 			default:
 				for _, added := range diff.Added {
-					unreleased.Added = append(unreleased.Added, fmt.Sprintf("- %s; %s", added, commit.Hash))
+					if existing, ok := addedUnique[added]; ok {
+						addedUnique[added] = existing + ", " + commit.Message
+					} else {
+						addedUnique[added] = commit.Message
+					}
 				}
 				if ccType != conventionalCommitFix {
 					for _, changed := range diff.Changed {
-						unreleased.Changed = append(unreleased.Changed, fmt.Sprintf("- %s; %s", changed, commit.Hash))
+						if existing, ok := changedUnique[changed]; ok {
+							changedUnique[changed] = existing + ", " + commit.Message
+						} else {
+							changedUnique[changed] = commit.Message
+						}
 					}
 				}
 				for _, removed := range diff.Removed {
-					unreleased.Removed = append(unreleased.Removed, fmt.Sprintf("- %s; %s", removed, commit.Hash))
+					if existing, ok := removedUnique[removed]; ok {
+						removedUnique[removed] = existing + ", " + commit.Message
+					} else {
+						removedUnique[removed] = commit.Message
+					}
 				}
 			}
+		}
+
+		for fixed, message := range fixedUnique {
+			unreleased.Fixed = append(unreleased.Fixed, fmt.Sprintf("- %s; %s", fixed, message))
+		}
+
+		for added, message := range addedUnique {
+			unreleased.Added = append(unreleased.Added, fmt.Sprintf("- %s; %s", added, message))
+		}
+
+		for changed, message := range changedUnique {
+			unreleased.Changed = append(unreleased.Changed, fmt.Sprintf("- %s; %s", changed, message))
+		}
+
+		for removed, message := range removedUnique {
+			unreleased.Removed = append(unreleased.Removed, fmt.Sprintf("- %s; %s", removed, message))
 		}
 
 		unreleased.renderChangeText(*increment)
@@ -189,9 +221,20 @@ func update() {
 		}
 	}
 
-	sLogger.Debug(changelog)
-	sLogger.Debug(unreleased)
-	sLogger.Debug(increment)
-	sLogger.Debug(released)
-	sLogger.Debug(err)
+	sb := strings.Builder{}
+	sb.WriteString(changelogHeader)
+	unreleasedTextLines := strings.SplitN(*unreleased.Text, "\n", 2)
+	sb.WriteString("## [Unreleased] - " + time.Now().Format("2006-01-02"))
+	sb.WriteString("\n")
+	sb.WriteString(unreleasedTextLines[1])
+	sb.WriteString("\n")
+
+	for _, release := range released {
+		sb.WriteString(*release.Text)
+		sb.WriteString("\n")
+	}
+
+	if err := os.WriteFile(options.ChangelogFile, []byte(sb.String()), 0644); err != nil {
+		sLogger.Fatal(err.Error())
+	}
 }

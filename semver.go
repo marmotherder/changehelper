@@ -10,8 +10,8 @@ const (
 	MAJOR = "MAJOR"
 )
 
-func getLatestRelease(released []change) *change {
-	changeMap := map[string]change{}
+func getLatestRelease(released []*change) *change {
+	changeMap := map[string]*change{}
 	releasedVersions := make([]semver.Version, 0)
 
 	for _, change := range released {
@@ -26,7 +26,7 @@ func getLatestRelease(released []change) *change {
 	semver.Sort(releasedVersions)
 
 	if change, ok := changeMap[releasedVersions[0].String()]; ok {
-		return &change
+		return change
 	}
 
 	return nil
