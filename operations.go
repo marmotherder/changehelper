@@ -377,3 +377,7 @@ func printUnreleased(changelogFile string) {
 
 	fmt.Print(unreleased.Version.String())
 }
+
+func release() {
+	sLogger.Fatal("operation is unimplemented")
+}

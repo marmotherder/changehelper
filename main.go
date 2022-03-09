@@ -75,7 +75,7 @@ func main() {
 		update()
 		fallthrough
 	case "release":
-		sLogger.Fatal("operation is unimplemented")
+		release()
 	case "version":
 		fmt.Print(version)
 	default:
