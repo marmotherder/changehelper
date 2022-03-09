@@ -93,17 +93,17 @@ func parseConventionalCommitMessages(commitMessages ...string) (*string, map[int
 	return &increment, mappedTypes
 }
 
-func resolveConventionalCommits(dir, changelogFile string) (*string, map[string]string, map[string]string, map[string]string, map[string]string, error) {
-	lastCommit, err := getLastModifiedCommit(dir, changelogFile)
+func resolveConventionalCommits(git gitCli, changelogFile string) (*string, map[string]string, map[string]string, map[string]string, map[string]string, error) {
+	lastCommit, err := git.getLastModifiedCommit(changelogFile)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 
-	commits, err := listGitCommits(dir, *lastCommit+"..")
+	commits, err := git.listCommits(*lastCommit + "..")
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
-	selfCommit, err := listGitCommits(dir, "-n 1 "+*lastCommit)
+	selfCommit, err := git.listCommits("-n 1 " + *lastCommit)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
@@ -124,7 +124,7 @@ func resolveConventionalCommits(dir, changelogFile string) (*string, map[string]
 	for idx, ccType := range mappedTypes {
 		commit := commits[idx]
 
-		diff, err := getGitRefChanges(dir, commit.Hash)
+		diff, err := git.getRefChanges(commit.Hash)
 		if err != nil {
 			sLogger.Warnf("failed to read changes for commit %s, changes will not be recorded in changelog", commit.Hash)
 		}

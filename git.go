@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -21,9 +22,13 @@ type gitDiff struct {
 	Removed []string
 }
 
-func getGitRemote(dir string) (*string, error) {
+type gitCli struct {
+	WorkingDirectory string
+}
+
+func (git gitCli) getRemote() (*string, error) {
 	sLogger.Debug("looking up git remote")
-	remote, _, err := runCommand(dir, gitCmd, "remote")
+	remote, _, err := runCommand(git.WorkingDirectory, gitCmd, "remote")
 	if err != nil {
 		sLogger.Error("failed to lookup git remote")
 		return nil, err
@@ -45,9 +50,16 @@ func getGitRemote(dir string) (*string, error) {
 	return &remoteString, nil
 }
 
-func gitCheckout(ref, dir string) error {
+func (git gitCli) checkout(ref string) error {
 	sLogger.Debug("looking up git remotes")
-	stdOut, _, err := runCommand(dir, gitCmd, "checkout", ref)
+	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "checkout", ref)
+	sLogger.Info(*stdOut)
+	return err
+}
+
+func (git gitCli) pull() error {
+	sLogger.Debug("running git pull")
+	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "pull")
 	sLogger.Info(*stdOut)
 	return err
 }
@@ -57,9 +69,9 @@ type gitCommit struct {
 	Message string
 }
 
-func listGitCommits(dir string, commitRange ...string) ([]gitCommit, error) {
+func (git gitCli) listCommits(commitRange ...string) ([]gitCommit, error) {
 	sLogger.Debug("looking up git commits")
-	stdOut, _, err := runCommand(dir, gitCmd, append([]string{"log", `--pretty=format:"%H %s"`}, commitRange...)...)
+	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, append([]string{"log", `--pretty=format:"%H %s"`}, commitRange...)...)
 	if err != nil {
 		sLogger.Error("failed to run git log")
 		return nil, err
@@ -68,6 +80,7 @@ func listGitCommits(dir string, commitRange ...string) ([]gitCommit, error) {
 	gitCommits := []gitCommit{}
 	commitLines := strings.Split(*stdOut, "\n")
 	for _, commitLine := range commitLines {
+		sLogger.Debugf("processing commit: %s", commitLine)
 		if commitLine != "" && commitLine != "\"\"" {
 			tidyCommitLine := commitLine[1 : len(commitLine)-1]
 			splitLine := strings.SplitN(tidyCommitLine, " ", 2)
@@ -81,21 +94,22 @@ func listGitCommits(dir string, commitRange ...string) ([]gitCommit, error) {
 	return gitCommits, nil
 }
 
-func getGitRefChanges(dir, ref string) (*gitDiff, error) {
+func (git gitCli) getRefChanges(ref string) (*gitDiff, error) {
 	sLogger.Debug("looking up changes for ref %s", ref)
-	stdOut, _, err := runCommand(dir, gitCmd, "show", "--name-status", ref, "--pretty=format:")
+	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "show", "--name-status", ref, "--pretty=format:")
 	if err != nil {
 		sLogger.Errorf("git show for %s failed", ref)
 		return nil, err
 	}
 
-	diff := parseGitChanges(*stdOut)
+	diff := parseChanges(*stdOut)
 	return &diff, nil
 }
 
-func parseGitChanges(changes string, relativePath ...string) gitDiff {
+func parseChanges(changes string, relativePath ...string) gitDiff {
 	uniqueChanges := map[string]string{}
 	for _, line := range strings.Split(changes, "\n") {
+		sLogger.Debugf("attempting to parse commit to a diff: %s", line)
 		fields := strings.Fields(line)
 
 		if len(fields) < 2 || len(fields) > 3 {
@@ -139,9 +153,9 @@ func parseGitChanges(changes string, relativePath ...string) gitDiff {
 	return data
 }
 
-func getLastModifiedCommit(dir, path string) (*string, error) {
+func (git gitCli) getLastModifiedCommit(path string) (*string, error) {
 	sLogger.Debug("looking up most recent commit for %s", path)
-	stdOut, _, err := runCommand(dir, gitCmd, "log", "-n", "1", "--pretty=format:%H", "--", path)
+	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "log", "-n", "1", "--pretty=format:%H", "--", path)
 	if err != nil {
 		sLogger.Error("failed to run git log")
 		return nil, err
@@ -150,12 +164,12 @@ func getLastModifiedCommit(dir, path string) (*string, error) {
 	return stdOut, nil
 }
 
-func listRemoteGitBranches(dir, prefix string, remotes ...string) ([]string, error) {
+func (git gitCli) listRemoteBranches(prefix string, remotes ...string) ([]string, error) {
 	var remote string
 	if len(remotes) > 0 {
 		remote = remotes[0]
 	} else {
-		foundRemote, err := getGitRemote(dir)
+		foundRemote, err := git.getRemote()
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +177,7 @@ func listRemoteGitBranches(dir, prefix string, remotes ...string) ([]string, err
 	}
 
 	sLogger.Info("attempting to get a list of remote branches in git from %s", remote)
-	foundRemoteBranches, _, err := runCommand(dir, gitCmd, "ls-remote", "--heads", remote)
+	foundRemoteBranches, _, err := runCommand(git.WorkingDirectory, gitCmd, "ls-remote", "--heads", remote)
 	if err != nil {
 		sLogger.Error("failed to lookup branches from remote")
 		return nil, err
@@ -184,4 +198,65 @@ func listRemoteGitBranches(dir, prefix string, remotes ...string) ([]string, err
 	}
 
 	return remoteBranches, nil
+}
+
+func (git gitCli) checkoutAndPull(branch string) {
+	if branch != "" {
+		if err := git.checkout(branch); err != nil {
+			sLogger.Fatal(err.Error())
+		}
+
+		if err := git.pull(); err != nil {
+			sLogger.Fatal(err.Error())
+		}
+	}
+}
+
+func (git gitCli) diff(sourceRef, compareRef string) (*gitDiff, error) {
+	sLogger.Debug("running a git dif between %s and %s", sourceRef, compareRef)
+	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "rev-parse", "--show-toplevel")
+	if err != nil {
+		sLogger.Error("failed to rev-parse")
+		return nil, err
+	}
+
+	gitPath := strings.Trim(*stdOut, "\n")
+
+	absPath, err := filepath.Abs(git.WorkingDirectory)
+	if err != nil {
+		sLogger.Error("failed to check if paths were absolute")
+		return nil, err
+	}
+
+	relativePath := strings.ReplaceAll(absPath, gitPath, "")
+	if relativePath != "" {
+		relativePath = relativePath[1:]
+	}
+	sLogger.Debug("determined the relative path as %s", relativePath)
+
+	sLogger.Info("attempting to run git fetch")
+	if _, _, err := runCommand(git.WorkingDirectory, gitCmd, "fetch"); err != nil {
+		sLogger.Error("failed to run git fetch")
+		return nil, err
+	}
+
+	sLogger.Info("attempting to run git diff between two refs")
+	stdOutBranch, _, err := runCommand(git.WorkingDirectory, gitCmd, "diff", "--name-status", sourceRef, compareRef)
+	if err != nil {
+		sLogger.Errorf("failed to git diff between %s and %s", sourceRef, compareRef)
+		return nil, err
+	}
+
+	sLogger.Info("attempting to run git diff on single ref")
+	stdOutLocal, _, err := runCommand(git.WorkingDirectory, gitCmd, "diff", "--name-status", compareRef)
+	if err != nil {
+		sLogger.Errorf("failed to git diff %s", compareRef)
+		return nil, err
+	}
+
+	allChanges := *stdOutBranch + "\n" + *stdOutLocal
+	diff := parseChanges(allChanges, relativePath)
+
+	sLogger.Debug(diff)
+	return &diff, nil
 }

@@ -32,8 +32,8 @@ func getLatestRelease(released []*change) *change {
 	return nil
 }
 
-func listReleasedVersionFromGit(dir, prefix string, remotes ...string) ([]semver.Version, error) {
-	releaseBranches, err := listRemoteGitBranches(dir, prefix, remotes...)
+func listReleasedVersionFromGit(git gitCli, prefix string, remotes ...string) ([]semver.Version, error) {
+	releaseBranches, err := git.listRemoteBranches(prefix, remotes...)
 	if err != nil {
 		return nil, err
 	}

@@ -8,13 +8,18 @@ import (
 	"time"
 
 	"github.com/blang/semver"
-	"github.com/leodido/go-conventionalcommits"
-	"github.com/leodido/go-conventionalcommits/parser"
+	"github.com/manifoldco/promptui"
 )
 
 func newVersion() {
 	var options NewVersionOptions
 	parseOptions(&options)
+
+	git := gitCli{
+		WorkingDirectory: options.GitWorkingDirectory,
+	}
+
+	git.checkoutAndPull(options.GitBranch)
 
 	sLogger.Infof("checking if changelog file %s exists", options.ChangelogFile)
 	if _, err := os.Stat(options.ChangelogFile); err != nil && errors.Is(err, os.ErrNotExist) {
@@ -30,18 +35,60 @@ func newVersion() {
 		sLogger.Fatal(err.Error())
 	}
 
-	machineOptions := []conventionalcommits.MachineOption{
-		conventionalcommits.WithTypes(conventionalcommits.TypesConventional),
-		conventionalcommits.WithBestEffort(),
+	unreleasedText := "## [Unreleased]"
+	newChange := change{
+		VersionText: &unreleasedText,
 	}
-	machine := parser.NewMachine(machineOptions...)
-	// SETUP MACHINE
-	sLogger.Info(machine)
 
-	stdOut, err := getGitRemote(options.GitWorkingDirectory)
-	sLogger.Info(*stdOut)
-	if err != nil {
-		sLogger.Error(err.Error())
+	if !options.Manual {
+		prompt := promptui.Select{
+			Label: "Try to resolve changes from git?",
+			Items: []string{"Yes", "No"},
+		}
+
+		_, confirm, err := prompt.Run()
+		if err != nil {
+			sLogger.Fatal(err.Error())
+		}
+
+		if confirm == "Yes" {
+			hasConventionalCommits := func() bool {
+				increment, err := loadConventionalCommitsToChange(
+					options.GitWorkingDirectory,
+					options.ChangelogFile,
+					&newChange,
+					git,
+				)
+				if err != nil {
+					sLogger.Warn("failed to use conventional commits, falling back to diff only")
+					sLogger.Debug(err.Error())
+					return false
+				}
+
+				unreleasedText = fmt.Sprintf("%s - %s", unreleasedText, *increment)
+				newChange.VersionText = &unreleasedText
+
+				return true
+			}()
+
+			if !hasConventionalCommits {
+				diff, err := git.diff(options.GitBranch, "HEAD")
+				if err != nil {
+					sLogger.Error("failed to resolve diff from git")
+					sLogger.Fatal(err.Error())
+				}
+
+				for _, added := range diff.Added {
+					newChange.Added = append(newChange.Added, "- "+added)
+				}
+				for _, changed := range diff.Changed {
+					newChange.Changed = append(newChange.Changed, "- "+changed)
+				}
+				for _, removed := range diff.Removed {
+					newChange.Removed = append(newChange.Removed, "- "+removed)
+				}
+			}
+		}
 	}
 }
 
@@ -51,11 +98,11 @@ func update() {
 
 	defaultVersion := semver.MustParse("0.0.0")
 
-	if options.GitBranch != "" {
-		if err := gitCheckout(options.GitBranch, options.GitWorkingDirectory); err != nil {
-			sLogger.Fatal(err.Error())
-		}
+	git := gitCli{
+		WorkingDirectory: options.GitWorkingDirectory,
 	}
+
+	git.checkoutAndPull(options.GitBranch)
 
 	_, unreleased, increment, released, err := parseChangelog(options.ChangelogFile)
 	if err != nil {
@@ -64,7 +111,7 @@ func update() {
 	}
 
 	if options.GitEvaluate {
-		gitVersions, err := listReleasedVersionFromGit(options.GitWorkingDirectory, options.GitPrefix)
+		gitVersions, err := listReleasedVersionFromGit(git, options.GitPrefix)
 		if err != nil {
 			sLogger.Error("failed to lookup versions from git")
 			sLogger.Fatal(err.Error())
@@ -94,38 +141,14 @@ func update() {
 			Version: &defaultVersion,
 		}
 
-		var fixedUnique map[string]string
-		var addedUnique map[string]string
-		var changedUnique map[string]string
-		var removedUnique map[string]string
-		increment, fixedUnique, addedUnique, changedUnique, removedUnique, err = resolveConventionalCommits(options.GitWorkingDirectory, options.ChangelogFile)
+		increment, err = loadConventionalCommitsToChange(
+			options.GitWorkingDirectory,
+			options.ChangelogFile,
+			unreleased,
+			git,
+		)
 		if err != nil {
-			sLogger.Error("failed to lookup conventional commits when running update")
 			sLogger.Fatal(err.Error())
-		}
-
-		for fixed, message := range fixedUnique {
-			if options.GitWorkingDirectory+fixed != options.ChangelogFile {
-				unreleased.Fixed = append(unreleased.Fixed, fmt.Sprintf("- %s; %s", fixed, message))
-			}
-		}
-
-		for added, message := range addedUnique {
-			if options.GitWorkingDirectory+added != options.ChangelogFile {
-				unreleased.Added = append(unreleased.Added, fmt.Sprintf("- %s; %s", added, message))
-			}
-		}
-
-		for changed, message := range changedUnique {
-			if options.GitWorkingDirectory+changed != options.ChangelogFile {
-				unreleased.Changed = append(unreleased.Changed, fmt.Sprintf("- %s; %s", changed, message))
-			}
-		}
-
-		for removed, message := range removedUnique {
-			if options.GitWorkingDirectory+removed != options.ChangelogFile {
-				unreleased.Removed = append(unreleased.Removed, fmt.Sprintf("- %s; %s", removed, message))
-			}
 		}
 
 		unreleased.renderChangeText(*increment)
@@ -192,4 +215,43 @@ func update() {
 	if err := os.WriteFile(options.ChangelogFile, []byte(sb.String()), 0644); err != nil {
 		sLogger.Fatal(err.Error())
 	}
+}
+
+func loadConventionalCommitsToChange(
+	dir,
+	changelogFile string,
+	change *change,
+	git gitCli,
+) (*string, error) {
+	increment, fixedUnique, addedUnique, changedUnique, removedUnique, err := resolveConventionalCommits(git, changelogFile)
+	if err != nil {
+		sLogger.Error("failed to lookup conventional commits when running update")
+		return nil, err
+	}
+
+	for fixed, message := range fixedUnique {
+		if dir+fixed != changelogFile {
+			change.Fixed = append(change.Fixed, fmt.Sprintf("- %s; %s", fixed, message))
+		}
+	}
+
+	for added, message := range addedUnique {
+		if dir+added != changelogFile {
+			change.Added = append(change.Added, fmt.Sprintf("- %s; %s", added, message))
+		}
+	}
+
+	for changed, message := range changedUnique {
+		if dir+changed != changelogFile {
+			change.Changed = append(change.Changed, fmt.Sprintf("- %s; %s", changed, message))
+		}
+	}
+
+	for removed, message := range removedUnique {
+		if dir+removed != changelogFile {
+			change.Removed = append(change.Removed, fmt.Sprintf("- %s; %s", removed, message))
+		}
+	}
+
+	return increment, nil
 }
