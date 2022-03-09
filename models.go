@@ -40,7 +40,7 @@ type changeType string
 
 func (c *change) renderChangeText(increment ...string) {
 	sb := strings.Builder{}
-	versionText := "## [Unreleased]"
+	versionText := releasePrefix + "[Unreleased]"
 	if len(increment) > 0 {
 		versionText = fmt.Sprintf("%s - %s", versionText, increment[0])
 	}
@@ -49,7 +49,7 @@ func (c *change) renderChangeText(increment ...string) {
 	sb.WriteString(versionText)
 	appendSection := func(text changeType, section []string) {
 		if len(section) > 0 {
-			sb.WriteString(fmt.Sprintf("### %s\n", text))
+			sb.WriteString(fmt.Sprintf("%s%s\n", changePrefix, text))
 			sb.WriteString(fmt.Sprintf("%s\n", strings.Join(section, "\n")))
 		}
 	}

@@ -53,3 +53,19 @@ func listReleasedVersionFromGit(git gitCli, prefix string, remotes ...string) ([
 
 	return releasedVersions, nil
 }
+
+func updateUnreleasedVersion(unreleased *change, increment *string) {
+	if increment != nil {
+		switch *increment {
+		case PATCH:
+			unreleased.Version.Patch++
+		case MINOR:
+			unreleased.Version.Minor++
+			unreleased.Version.Patch = 0
+		case MAJOR:
+			unreleased.Version.Major++
+			unreleased.Version.Minor = 0
+			unreleased.Version.Patch = 0
+		}
+	}
+}

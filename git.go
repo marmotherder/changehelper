@@ -95,7 +95,7 @@ func (git gitCli) listCommits(commitRange ...string) ([]gitCommit, error) {
 }
 
 func (git gitCli) getRefChanges(ref string) (*gitDiff, error) {
-	sLogger.Debug("looking up changes for ref %s", ref)
+	sLogger.Debugf("looking up changes for ref %s", ref)
 	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "show", "--name-status", ref, "--pretty=format:")
 	if err != nil {
 		sLogger.Errorf("git show for %s failed", ref)
@@ -104,6 +104,17 @@ func (git gitCli) getRefChanges(ref string) (*gitDiff, error) {
 
 	diff := parseChanges(*stdOut)
 	return &diff, nil
+}
+
+func (git gitCli) getCurrentBranch() (*string, error) {
+	sLogger.Debug("getting the current branch")
+	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "rev-parse", "--abbrev-ref", "HEAD")
+	if err != nil {
+		sLogger.Errorf("failed to get the current git branch")
+		return nil, err
+	}
+
+	return stdOut, nil
 }
 
 func parseChanges(changes string, relativePath ...string) gitDiff {
@@ -120,11 +131,9 @@ func parseChanges(changes string, relativePath ...string) gitDiff {
 		changedFile := fields[1]
 
 		if len(relativePath) > 0 && relativePath[0] != "" {
-			if !strings.HasPrefix(changedFile, relativePath[0]) {
-				continue
+			if strings.HasPrefix(changedFile, relativePath[0]) {
+				changedFile = strings.ReplaceAll(changedFile, relativePath[0], "")[1:]
 			}
-
-			changedFile = strings.ReplaceAll(changedFile, relativePath[0], "")[1:]
 		}
 
 		if len(fields) == 3 {
@@ -200,20 +209,24 @@ func (git gitCli) listRemoteBranches(prefix string, remotes ...string) ([]string
 	return remoteBranches, nil
 }
 
-func (git gitCli) checkoutAndPull(branch string) {
+func (git gitCli) checkoutAndPull(branch string) error {
 	if branch != "" {
 		if err := git.checkout(branch); err != nil {
-			sLogger.Fatal(err.Error())
+			sLogger.Error(err.Error())
+			return err
 		}
 
 		if err := git.pull(); err != nil {
-			sLogger.Fatal(err.Error())
+			sLogger.Error(err.Error())
+			return err
 		}
 	}
+
+	return nil
 }
 
 func (git gitCli) diff(sourceRef, compareRef string) (*gitDiff, error) {
-	sLogger.Debug("running a git dif between %s and %s", sourceRef, compareRef)
+	sLogger.Debugf("running a git diff between %s and %s", sourceRef, compareRef)
 	stdOut, _, err := runCommand(git.WorkingDirectory, gitCmd, "rev-parse", "--show-toplevel")
 	if err != nil {
 		sLogger.Error("failed to rev-parse")
@@ -232,7 +245,7 @@ func (git gitCli) diff(sourceRef, compareRef string) (*gitDiff, error) {
 	if relativePath != "" {
 		relativePath = relativePath[1:]
 	}
-	sLogger.Debug("determined the relative path as %s", relativePath)
+	sLogger.Debugf("determined the relative path as %s", relativePath)
 
 	sLogger.Info("attempting to run git fetch")
 	if _, _, err := runCommand(git.WorkingDirectory, gitCmd, "fetch"); err != nil {

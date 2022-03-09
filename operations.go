@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/manifoldco/promptui"
@@ -18,8 +17,6 @@ func newVersion() {
 	git := gitCli{
 		WorkingDirectory: options.GitWorkingDirectory,
 	}
-
-	git.checkoutAndPull(options.GitBranch)
 
 	sLogger.Infof("checking if changelog file %s exists", options.ChangelogFile)
 	if _, err := os.Stat(options.ChangelogFile); err != nil && errors.Is(err, os.ErrNotExist) {
@@ -35,60 +32,169 @@ func newVersion() {
 		sLogger.Fatal(err.Error())
 	}
 
-	unreleasedText := "## [Unreleased]"
+	_, unreleased, _, released, err := parseChangelog(options.ChangelogFile)
+	if err != nil {
+		sLogger.Errorf("failed to read the changelog file %s", options.ChangelogFile)
+		sLogger.Fatal(err.Error())
+	}
+
+	if unreleased != nil {
+		if options.Force {
+			sLogger.Warn("there is a pending release, going to replace with incoming")
+		} else {
+			sLogger.Fatal("a pending version already exists in the changelog")
+		}
+	}
+
+	unreleasedText := "[Unreleased]"
 	newChange := change{
 		VersionText: &unreleasedText,
 	}
+	increment := ""
 
-	if !options.Manual {
-		prompt := promptui.Select{
-			Label: "Try to resolve changes from git?",
-			Items: []string{"Yes", "No"},
+	gitResolve := true
+	if !options.NonInteractive {
+		if options.Manual {
+			prompt := promptui.Select{
+				Label: "Should the new version attempt to be resolved from git?",
+				Items: []string{"Yes", "No"},
+			}
+
+			_, confirm, err := prompt.Run()
+			if err != nil {
+				sLogger.Fatal(err.Error())
+			}
+
+			if confirm == "No" {
+				gitResolve = false
+			}
 		}
+	}
 
-		_, confirm, err := prompt.Run()
-		if err != nil {
-			sLogger.Fatal(err.Error())
-		}
+	if gitResolve {
+		useBranch := options.GitBranch
+		if useBranch != "" {
+			if err := git.checkoutAndPull(useBranch); err != nil {
+				sLogger.Fatal(err.Error())
+			}
+		} else {
+			shouldPromptBranch := false
+			currentBranch, err := git.getCurrentBranch()
+			if err != nil {
+				sLogger.Warn("failed to get the current git branch")
+				sLogger.Error(err.Error())
+				shouldPromptBranch = true
+			}
+			if currentBranch == nil {
+				sLogger.Warn("current branch was returned as blank")
+				shouldPromptBranch = true
+			}
 
-		if confirm == "Yes" {
-			hasConventionalCommits := func() bool {
-				increment, err := loadConventionalCommitsToChange(
-					options.GitWorkingDirectory,
-					options.ChangelogFile,
-					&newChange,
-					git,
-				)
-				if err != nil {
-					sLogger.Warn("failed to use conventional commits, falling back to diff only")
-					sLogger.Debug(err.Error())
-					return false
+			if shouldPromptBranch {
+				branchPrompt := promptui.Prompt{
+					Label: "What git branch should the changes be loaded from?",
+					Validate: func(input string) error {
+						if err := git.checkoutAndPull(input); err != nil {
+							return err
+						}
+						return nil
+					},
 				}
 
-				unreleasedText = fmt.Sprintf("%s - %s", unreleasedText, *increment)
-				newChange.VersionText = &unreleasedText
-
-				return true
-			}()
-
-			if !hasConventionalCommits {
-				diff, err := git.diff(options.GitBranch, "HEAD")
+				branchResp, err := branchPrompt.Run()
 				if err != nil {
-					sLogger.Error("failed to resolve diff from git")
+					sLogger.Fatal(err.Error())
+				}
+				if err := git.checkoutAndPull(branchResp); err != nil {
 					sLogger.Fatal(err.Error())
 				}
 
-				for _, added := range diff.Added {
-					newChange.Added = append(newChange.Added, "- "+added)
-				}
-				for _, changed := range diff.Changed {
-					newChange.Changed = append(newChange.Changed, "- "+changed)
-				}
-				for _, removed := range diff.Removed {
-					newChange.Removed = append(newChange.Removed, "- "+removed)
-				}
+				useBranch = branchResp
+			} else {
+				useBranch = *currentBranch
 			}
 		}
+
+		hasConventionalCommits := func() bool {
+			if options.IgnoreConventionalCommits {
+				return false
+			}
+			ccIncrement, err := loadConventionalCommitsToChange(
+				options.GitWorkingDirectory,
+				options.ChangelogFile,
+				&newChange,
+				git,
+			)
+			if err != nil {
+				sLogger.Warn("failed to use conventional commits, falling back to diff only")
+				sLogger.Debug(err.Error())
+				return false
+			}
+
+			increment = *ccIncrement
+			// unreleasedText = fmt.Sprintf("%s - %s", unreleasedText, *increment)
+			// newChange.VersionText = &unreleasedText
+
+			return true
+		}()
+
+		if !hasConventionalCommits {
+			defaultOrigin := "origin"
+			origin, err := git.getRemote()
+			if err != nil {
+				sLogger.Error(err.Error())
+			}
+			if origin != nil && *origin != "" {
+				defaultOrigin = *origin
+			}
+			diff, err := git.diff(useBranch, defaultOrigin+"/HEAD")
+			if err != nil {
+				sLogger.Error("failed to resolve diff from git")
+				sLogger.Fatal(err.Error())
+			}
+
+			for _, added := range diff.Added {
+				newChange.Added = append(newChange.Added, "- "+added)
+			}
+			for _, changed := range diff.Changed {
+				newChange.Changed = append(newChange.Changed, "- "+changed)
+			}
+			for _, removed := range diff.Removed {
+				newChange.Removed = append(newChange.Removed, "- "+removed)
+			}
+		}
+	} else if !options.NonInteractive {
+		mustCaptureMultiLineInput("Was anything added this release?", "Was anything more added this release?", "Describe what was added in this release", &newChange.Added)
+		mustCaptureMultiLineInput("Was anything changed this release?", "Was anything more changed this release?", "Describe what was changed in this release", &newChange.Changed)
+		mustCaptureMultiLineInput("Was anything deprecated this release?", "Was anything more deprecated this release?", "Describe what was deprecated in this release", &newChange.Deprecated)
+		mustCaptureMultiLineInput("Was anything removed this release?", "Was anything more removed this release?", "Describe what was removed in this release", &newChange.Removed)
+		mustCaptureMultiLineInput("Was anything fixed this release?", "Was anything more fixed this release?", "Describe what was fixed in this release", &newChange.Fixed)
+		mustCaptureMultiLineInput("Was anything security related this release?", "Was anything more security related this release?", "Describe what was security related in this release", &newChange.Security)
+	}
+
+	if options.Increment == "" && increment == "" {
+		if options.NonInteractive {
+			sLogger.Fatal("no increment level set for the version")
+		}
+
+		incrementPrompt := promptui.Select{
+			Label: "What is the incrementation level?",
+			Items: []string{"MAJOR", "MINOR", "PATCH"},
+		}
+
+		_, pIncrement, err := incrementPrompt.Run()
+		if err != nil {
+			sLogger.Error("failed to get the incrementation level")
+			sLogger.Fatal(err.Error())
+		}
+
+		increment = pIncrement
+	}
+
+	newChange.renderChangeText(increment)
+
+	if err := writeToChangelogFile(options.ChangelogFile, &newChange, released, false); err != nil {
+		sLogger.Fatal(err.Error())
 	}
 }
 
@@ -102,7 +208,9 @@ func update() {
 		WorkingDirectory: options.GitWorkingDirectory,
 	}
 
-	git.checkoutAndPull(options.GitBranch)
+	if options.GitBranch != "" {
+		git.checkoutAndPull(options.GitBranch)
+	}
 
 	_, unreleased, increment, released, err := parseChangelog(options.ChangelogFile)
 	if err != nil {
@@ -181,38 +289,9 @@ func update() {
 		unreleased.Version = latestRelease.Version
 	}
 
-	unreleased.Version.Major = latestRelease.Version.Major
-	unreleased.Version.Minor = latestRelease.Version.Minor
-	unreleased.Version.Patch = latestRelease.Version.Patch
+	updateUnreleasedVersion(unreleased, increment)
 
-	if increment != nil {
-		switch *increment {
-		case PATCH:
-			unreleased.Version.Patch++
-		case MINOR:
-			unreleased.Version.Minor++
-			unreleased.Version.Patch = 0
-		case MAJOR:
-			unreleased.Version.Major++
-			unreleased.Version.Minor = 0
-			unreleased.Version.Patch = 0
-		}
-	}
-
-	sb := strings.Builder{}
-	sb.WriteString(changelogHeader)
-	unreleasedTextLines := strings.SplitN(*unreleased.Text, "\n", 2)
-	sb.WriteString(fmt.Sprintf("## [%s] - %s", unreleased.Version.String(), time.Now().Format("2006-01-02")))
-	sb.WriteString("\n")
-	sb.WriteString(unreleasedTextLines[1])
-	sb.WriteString("\n\n")
-
-	for _, release := range released {
-		sb.WriteString(*release.Text)
-		sb.WriteString("\n")
-	}
-
-	if err := os.WriteFile(options.ChangelogFile, []byte(sb.String()), 0644); err != nil {
+	if err := writeToChangelogFile(options.ChangelogFile, unreleased, released, true); err != nil {
 		sLogger.Fatal(err.Error())
 	}
 }
@@ -254,4 +333,47 @@ func loadConventionalCommitsToChange(
 	}
 
 	return increment, nil
+}
+
+func printCurrent(changelogFile string) {
+	_, _, _, released, err := parseChangelog(changelogFile)
+	if err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	latest := getLatestRelease(released)
+
+	if latest != nil && latest.Version != nil {
+		fmt.Print(latest.Version.String())
+		os.Exit(0)
+	}
+
+	sLogger.Fatal("no releases found in changelog file")
+}
+
+func printUnreleased(changelogFile string) {
+	_, unreleased, increment, released, err := parseChangelog(changelogFile)
+	if err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	if unreleased == nil {
+		sLogger.Fatal("an unreleased change couldn't be found")
+	}
+
+	if increment == nil {
+		sLogger.Fatal("the unreleased change has no increment set, so version cannot be determined")
+	}
+
+	if len(released) > 0 {
+		latest := getLatestRelease(released)
+		unreleased.Version = latest.Version
+	} else {
+		defaultVersion := semver.MustParse("0.0.0")
+		unreleased.Version = &defaultVersion
+	}
+
+	updateUnreleasedVersion(unreleased, increment)
+
+	fmt.Print(unreleased.Version.String())
 }

@@ -65,13 +65,16 @@ func main() {
 
 	case "new-version":
 		newVersion()
-	case "print-current",
-		"print-unreleased":
-		sLogger.Fatal("operation is unimplemented")
+	case "print-current":
+		printCurrent(options.ChangelogFile)
+	case "print-unreleased":
+		printUnreleased(options.ChangelogFile)
 	case "update":
 		update()
-	case "release",
-		"update-and-release":
+	case "update-and-release":
+		update()
+		fallthrough
+	case "release":
 		sLogger.Fatal("operation is unimplemented")
 	case "version":
 		fmt.Print(version)

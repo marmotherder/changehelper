@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	"github.com/yuin/goldmark"
@@ -206,4 +207,30 @@ func parsingRegexes() (*regexp.Regexp, *regexp.Regexp, *regexp.Regexp, *regexp.R
 		return nil, nil, nil, nil, err
 	}
 	return unreleasedRegex, unreleasedIncrementRegex, releasedRegex, versionRegex, nil
+}
+
+func writeToChangelogFile(file string, unreleased *change, released []*change, update bool) error {
+	sb := strings.Builder{}
+	sb.WriteString(changelogHeader)
+	unreleasedTextLines := strings.SplitN(*unreleased.Text, "\n", 2)
+	if update {
+		sb.WriteString(fmt.Sprintf("%s [%s] - %s\n", releasePrefix, unreleased.Version.String(), time.Now().Format("2006-01-02")))
+	} else {
+		sb.WriteString(*unreleased.VersionText)
+	}
+
+	sb.WriteString(unreleasedTextLines[1])
+	sb.WriteString("\n\n")
+
+	for _, release := range released {
+		sb.WriteString(*release.Text)
+		sb.WriteString("\n")
+	}
+
+	if err := os.WriteFile(file, []byte(sb.String()), 0644); err != nil {
+		sLogger.Errorf("failed to write to changelog file %s", file)
+		return err
+	}
+
+	return nil
 }
