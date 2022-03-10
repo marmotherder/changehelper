@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2022-03-10
+### Added
+- conventional_commits.go; build: Set version in tags
+- go.sum; build: Set version in tags
+- utils.go; build: Set version in tags
+- models.go; build: Set version in tags
+- options.go; build: Set version in tags
+- semver.go; build: Set version in tags
+- changelog.go; build: Set version in tags
+- cmd.go; build: Set version in tags
+- .gitignore; build: Set version in tags
+- main.go; build: Set version in tags
+- logger.go; build: Set version in tags
+- .github/workflows/go.yml; build: Set version in tags
+- operations.go; build: Set version in tags
+- LICENSE; build: Set version in tags
+- README.md; build: Set version in tags
+- go.mod; build: Set version in tags
+- version.go; build: Set version in tags
+- git.go; build: Set version in tags
+- .github/actions/build-changehelper/action.yml; build: Set version in tags
+
 ## [1.0.5] - 2022-03-10
 ### Added
 - README.md; fix: add extra debugging for build
