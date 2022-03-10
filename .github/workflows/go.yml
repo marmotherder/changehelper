@@ -25,6 +25,7 @@ jobs:
 
     - name: Set up Go
       uses: actions/setup-go@v2
+      if: startsWith(github.ref, 'refs/heads/main')
       with:
         go-version: 1.17.8
 
@@ -32,6 +33,7 @@ jobs:
       run: go build
       env:
         CGO_ENABLED: 1
+      if: startsWith(github.ref, 'refs/heads/main')
       shell: bash
 
     - name: Set version
@@ -39,9 +41,11 @@ jobs:
         chmod 755 ./changehelper && ./changehelper update -t -llll
         CURRENT_VERSION=$(./changehelper print-current)
         sed -i "s,0.0.0,$CURRENT_VERSION,g" version.go
+      if: startsWith(github.ref, 'refs/heads/main')
       shell: bash
 
     - uses: actions/upload-artifact@v2
+      if: startsWith(github.ref, 'refs/heads/main')
       with:
         name: changehelper_linux_amd64_binary
         path: changehelper

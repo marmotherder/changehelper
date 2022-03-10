@@ -226,7 +226,7 @@ func parseChanges(changes string, relativePath ...string) gitDiff {
 }
 
 func (git gitCli) getLastModifiedCommit(path string) (*string, error) {
-	sLogger.Debug("looking up most recent commit for %s", path)
+	sLogger.Debugf("looking up most recent commit for %s", path)
 	stdOut, code, err := runCommand(git.WorkingDirectory, gitCmd, "log", "-n", "1", "--pretty=format:%H", "--", path)
 	if err != nil {
 		sLogger.Error("failed to run git log")
@@ -235,6 +235,7 @@ func (git gitCli) getLastModifiedCommit(path string) (*string, error) {
 	if code != 0 {
 		return nil, nonZeroCode("log")
 	}
+	sLogger.Infof("latest commit for %s is %s", path, stdOut)
 
 	return stdOut, nil
 }
