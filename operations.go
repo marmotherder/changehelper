@@ -335,12 +335,12 @@ func release() {
 		sLogger.Fatal(err.Error())
 	}
 
-	unreleasedVersion, err := getUnreleasedVersion(options.ChangelogFile)
+	version, err := getCurrentVersion(options.ChangelogFile)
 	if err != nil {
 		sLogger.Fatal(err.Error())
 	}
 
-	if err := git.commit(fmt.Sprintf(options.GitCommitMessage, *unreleasedVersion)); err != nil {
+	if err := git.commit(fmt.Sprintf(options.GitCommitMessage, version.String)); err != nil {
 		sLogger.Fatal(err.Error())
 	}
 
@@ -348,9 +348,9 @@ func release() {
 		sLogger.Fatal(err.Error())
 	}
 
-	majorBranch := fmt.Sprintf("%s/%d", options.GitPrefix, unreleasedVersion.Major)
-	minorBranch := fmt.Sprintf("%s.%d", majorBranch, unreleasedVersion.Minor)
-	patchBranch := fmt.Sprintf("%s.%d", minorBranch, unreleasedVersion.Patch)
+	majorBranch := fmt.Sprintf("%s/%d", options.GitPrefix, version.Major)
+	minorBranch := fmt.Sprintf("%s.%d", majorBranch, version.Minor)
+	patchBranch := fmt.Sprintf("%s.%d", minorBranch, version.Patch)
 
 	failed := false
 	if err := git.resetBranch(getRemote(git), branch, majorBranch); err != nil {
