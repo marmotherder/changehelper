@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2022-03-10
+### Added
+- LICENSE; docs: readme placeholders
+- README.md; docs: readme placeholders
+- .github/actions/build-changehelper/action.yml; docs: readme placeholders
+- utils.go; docs: readme placeholders
+- go.mod; docs: readme placeholders
+- semver.go; docs: readme placeholders
+- logger.go; docs: readme placeholders
+- operations.go; docs: readme placeholders
+- changelog.go; docs: readme placeholders
+- conventional_commits.go; docs: readme placeholders
+- version.go; docs: readme placeholders
+- go.sum; docs: readme placeholders
+- cmd.go; docs: readme placeholders
+- git.go; docs: readme placeholders
+- options.go; docs: readme placeholders
+- main.go; docs: readme placeholders
+- models.go; docs: readme placeholders
+- .github/workflows/go.yml; docs: readme placeholders
+- .gitignore; docs: readme placeholders
+
 ## [1.0.2] - 2022-03-10
 ### Fixed
 - operations.go; fix: set version correctly for generated release
