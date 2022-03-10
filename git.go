@@ -273,3 +273,64 @@ func (git gitCli) diff(sourceRef, compareRef string) (*gitDiff, error) {
 	sLogger.Debug(diff)
 	return &diff, nil
 }
+
+func (git gitCli) add(paths ...string) error {
+	sLogger.Debugf("attempting to stage the following in git: %s", paths)
+
+	addArgs := []string{"add"}
+
+	for _, path := range paths {
+		relativePath, err := resolvePathToRelativePath(path, git.WorkingDirectory)
+		if err != nil {
+			return err
+		}
+
+		addArgs = append(addArgs, *relativePath)
+	}
+
+	if _, _, err := runCommand(git.WorkingDirectory, gitCmd, addArgs...); err != nil {
+		sLogger.Error("failed to run git add")
+		return err
+	}
+
+	return nil
+}
+
+func (git gitCli) commit(message string) error {
+	sLogger.Debug("attempting to commit all staged git changes")
+
+	if _, _, err := runCommand(git.WorkingDirectory, gitCmd, "commit", "-m", message); err != nil {
+		sLogger.Error("failed to run git commit")
+		return err
+	}
+
+	return nil
+}
+
+func (git gitCli) push(force bool) error {
+	sLogger.Debug("attempting to push git changes")
+
+	pushArgs := []string{"push"}
+
+	if force {
+		pushArgs = append(pushArgs, "-f")
+	}
+
+	if _, _, err := runCommand(git.WorkingDirectory, gitCmd, pushArgs...); err != nil {
+		sLogger.Error("failed to run git push")
+		return err
+	}
+
+	return nil
+}
+
+func (git gitCli) resetBranch(remote, sourceBranch, targetBranch string) error {
+	sLogger.Debugf("attempting to reset branch %s against %s/%s", targetBranch, remote, sourceBranch)
+
+	if _, _, err := runCommand(git.WorkingDirectory, gitCmd, "push", "-f", remote, fmt.Sprintf("%s:%s", sourceBranch, targetBranch)); err != nil {
+		sLogger.Error("failed to run git commit")
+		return err
+	}
+
+	return nil
+}

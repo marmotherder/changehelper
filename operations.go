@@ -72,46 +72,11 @@ func newVersion() {
 	}
 
 	if gitResolve {
-		useBranch := options.GitBranch
-		if useBranch != "" {
-			if err := git.checkoutAndPull(useBranch); err != nil {
+		branch := mustHaveBranch(options.GitBranch, "What git branch should the changes be loaded from?", options.NonInteractive, git)
+
+		if !options.SkipGitCheckout {
+			if err := git.checkoutAndPull(branch); err != nil {
 				sLogger.Fatal(err.Error())
-			}
-		} else {
-			shouldPromptBranch := false
-			currentBranch, err := git.getCurrentBranch()
-			if err != nil {
-				sLogger.Warn("failed to get the current git branch")
-				sLogger.Error(err.Error())
-				shouldPromptBranch = true
-			}
-			if currentBranch == nil {
-				sLogger.Warn("current branch was returned as blank")
-				shouldPromptBranch = true
-			}
-
-			if shouldPromptBranch {
-				branchPrompt := promptui.Prompt{
-					Label: "What git branch should the changes be loaded from?",
-					Validate: func(input string) error {
-						if err := git.checkoutAndPull(input); err != nil {
-							return err
-						}
-						return nil
-					},
-				}
-
-				branchResp, err := branchPrompt.Run()
-				if err != nil {
-					sLogger.Fatal(err.Error())
-				}
-				if err := git.checkoutAndPull(branchResp); err != nil {
-					sLogger.Fatal(err.Error())
-				}
-
-				useBranch = branchResp
-			} else {
-				useBranch = *currentBranch
 			}
 		}
 
@@ -132,22 +97,12 @@ func newVersion() {
 			}
 
 			increment = *ccIncrement
-			// unreleasedText = fmt.Sprintf("%s - %s", unreleasedText, *increment)
-			// newChange.VersionText = &unreleasedText
 
 			return true
 		}()
 
 		if !hasConventionalCommits {
-			defaultOrigin := "origin"
-			origin, err := git.getRemote()
-			if err != nil {
-				sLogger.Error(err.Error())
-			}
-			if origin != nil && *origin != "" {
-				defaultOrigin = *origin
-			}
-			diff, err := git.diff(useBranch, defaultOrigin+"/HEAD")
+			diff, err := git.diff(branch, getRemote(git)+"/HEAD")
 			if err != nil {
 				sLogger.Error("failed to resolve diff from git")
 				sLogger.Fatal(err.Error())
@@ -336,48 +291,82 @@ func loadConventionalCommitsToChange(
 }
 
 func printCurrent(changelogFile string) {
-	_, _, _, released, err := parseChangelog(changelogFile)
+	current, err := getCurrentVersion(changelogFile)
 	if err != nil {
 		sLogger.Fatal(err.Error())
 	}
 
-	latest := getLatestRelease(released)
-
-	if latest != nil && latest.Version != nil {
-		fmt.Print(latest.Version.String())
-		os.Exit(0)
-	}
-
-	sLogger.Fatal("no releases found in changelog file")
+	fmt.Print(current.String())
+	os.Exit(0)
 }
 
 func printUnreleased(changelogFile string) {
-	_, unreleased, increment, released, err := parseChangelog(changelogFile)
+	unreleasedVersion, err := getUnreleasedVersion(changelogFile)
 	if err != nil {
 		sLogger.Fatal(err.Error())
 	}
 
-	if unreleased == nil {
-		sLogger.Fatal("an unreleased change couldn't be found")
-	}
-
-	if increment == nil {
-		sLogger.Fatal("the unreleased change has no increment set, so version cannot be determined")
-	}
-
-	if len(released) > 0 {
-		latest := getLatestRelease(released)
-		unreleased.Version = latest.Version
-	} else {
-		defaultVersion := semver.MustParse("0.0.0")
-		unreleased.Version = &defaultVersion
-	}
-
-	updateUnreleasedVersion(unreleased, increment)
-
-	fmt.Print(unreleased.Version.String())
+	fmt.Print(unreleasedVersion.String())
+	os.Exit(0)
 }
 
 func release() {
-	sLogger.Fatal("operation is unimplemented")
+	var options ReleaseOptions
+	parseOptions(&options)
+
+	git := gitCli{
+		WorkingDirectory: options.GitWorkingDirectory,
+	}
+
+	branch := mustHaveBranch(options.GitBranch, "What git branch should be released from?", options.NonInteractive, git)
+
+	if !options.SkipGitCheckout {
+		if err := git.checkoutAndPull(branch); err != nil {
+			sLogger.Fatal(err.Error())
+		}
+	}
+
+	releaseFiles := []string{options.ChangelogFile}
+	if len(options.ReleaseFiles) > 0 {
+		releaseFiles = append(releaseFiles, options.ReleaseFiles...)
+	}
+
+	if err := git.add(releaseFiles...); err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	unreleasedVersion, err := getUnreleasedVersion(options.ChangelogFile)
+	if err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	if err := git.commit(fmt.Sprintf(options.GitCommitMessage, *unreleasedVersion)); err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	if err := git.push(false); err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	majorBranch := fmt.Sprintf("%s/%d", options.GitPrefix, unreleasedVersion.Major)
+	minorBranch := fmt.Sprintf("%s.%d", majorBranch, unreleasedVersion.Minor)
+	patchBranch := fmt.Sprintf("%s.%d", minorBranch, unreleasedVersion.Patch)
+
+	failed := false
+	if err := git.resetBranch(getRemote(git), branch, majorBranch); err != nil {
+		sLogger.Error("failed to update/create the major branch")
+		failed = true
+	}
+	if err := git.resetBranch(getRemote(git), branch, minorBranch); err != nil {
+		sLogger.Error("failed to update/create the minor branch")
+		failed = true
+	}
+	if err := git.resetBranch(getRemote(git), branch, patchBranch); err != nil {
+		sLogger.Error("failed to update/create the patch branch")
+		failed = true
+	}
+
+	if failed {
+		sLogger.Fatal("one or more branches did not successfully update/create")
+	}
 }
