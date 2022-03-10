@@ -201,7 +201,7 @@ func update() {
 
 	if unreleased == nil {
 		unreleased = &change{
-			Version: &defaultVersion,
+			Version: latestRelease.Version,
 		}
 
 		increment, err = loadConventionalCommitsToChange(

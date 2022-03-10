@@ -25,7 +25,7 @@ func getLatestRelease(released []*change) *change {
 
 	semver.Sort(releasedVersions)
 
-	if change, ok := changeMap[releasedVersions[0].String()]; ok {
+	if change, ok := changeMap[releasedVersions[len(releasedVersions)-1].String()]; ok {
 		return change
 	}
 
