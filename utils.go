@@ -74,19 +74,16 @@ func mustHaveBranch(branch, label string, nonInteractive bool, git gitCli) strin
 		return branch
 	}
 
-	shouldPromptBranch := false
 	currentBranch, err := git.getCurrentBranch()
 	if err != nil {
 		sLogger.Warn("failed to get the current git branch")
 		sLogger.Error(err.Error())
-		shouldPromptBranch = true
 	}
-	if currentBranch == nil {
-		sLogger.Warn("current branch was returned as blank")
-		shouldPromptBranch = true
+	if currentBranch != nil {
+		return *currentBranch
 	}
 
-	if shouldPromptBranch && !nonInteractive {
+	if !nonInteractive {
 		branchPrompt := promptui.Prompt{
 			Label: label,
 			Validate: func(input string) error {
