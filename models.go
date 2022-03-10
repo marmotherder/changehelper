@@ -46,7 +46,6 @@ func (c *change) renderChangeText(increment ...string) {
 	}
 	versionText = versionText + "\n"
 	c.VersionText = &versionText
-	sb.WriteString(versionText)
 	appendSection := func(text changeType, section []string) {
 		if len(section) > 0 {
 			sb.WriteString(fmt.Sprintf("%s%s\n", changePrefix, text))
@@ -72,4 +71,25 @@ func (c *change) renderChangeText(increment ...string) {
 func nodeText(node ast.Node, source []byte) *string {
 	text := string(node.Text(source))
 	return &text
+}
+
+func loopChildren(node ast.Node, source []byte) []string {
+	text := []string{}
+
+	if !node.HasChildren() {
+		return text
+	}
+
+	current := node.FirstChild()
+	for {
+		if current == nil {
+			break
+		}
+
+		text = append(text, string(current.Text(source)))
+
+		current = current.NextSibling()
+	}
+
+	return text
 }

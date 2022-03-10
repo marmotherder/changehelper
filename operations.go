@@ -46,9 +46,9 @@ func newVersion() {
 		}
 	}
 
-	unreleasedText := "[Unreleased]"
+	unreleasedVersionText := "[Unreleased]"
 	newChange := change{
-		VersionText: &unreleasedText,
+		VersionText: &unreleasedVersionText,
 	}
 	increment := ""
 
@@ -245,6 +245,9 @@ func update() {
 	}
 
 	updateUnreleasedVersion(unreleased, increment)
+
+	sLogger.Debug("Updating unrleased to:")
+	sLogger.Debug(*unreleased.Text)
 
 	if err := writeToChangelogFile(options.ChangelogFile, unreleased, released, true); err != nil {
 		sLogger.Fatal(err.Error())

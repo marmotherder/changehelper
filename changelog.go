@@ -116,6 +116,7 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 
 		if currentChange != nil {
 			text := *nodeText(current, changelog)
+			childText := loopChildren(current, changelog)
 
 			switch currentText {
 			case strings.ToLower(string(changeAdded)):
@@ -137,35 +138,48 @@ func parseChangelog(changelogFile string) (changelog []byte, unreleased *change,
 				currentChangeType = changeSecurity
 				prefix = changePrefix
 			default:
-				if currentChangeType != "" {
+				if currentChangeType != "" && prefix != changePrefix {
 					switch currentChangeType {
 					case changeAdded:
-						currentChange.Added = append(currentChange.Added, text)
+						currentChange.Added = append(currentChange.Added, childText...)
 						prefix = linePrefix
 					case changeChanged:
-						currentChange.Changed = append(currentChange.Changed, text)
+						currentChange.Changed = append(currentChange.Changed, childText...)
 						prefix = linePrefix
 					case changeDeprecated:
-						currentChange.Deprecated = append(currentChange.Deprecated, text)
+						currentChange.Deprecated = append(currentChange.Deprecated, childText...)
 						prefix = linePrefix
 					case changeRemoved:
-						currentChange.Removed = append(currentChange.Removed, text)
+						currentChange.Removed = append(currentChange.Removed, childText...)
 						prefix = linePrefix
 					case changeFixed:
-						currentChange.Fixed = append(currentChange.Fixed, text)
+						currentChange.Fixed = append(currentChange.Fixed, childText...)
 						prefix = linePrefix
 					case changeSecurity:
-						currentChange.Security = append(currentChange.Security, text)
+						currentChange.Security = append(currentChange.Security, childText...)
 						prefix = linePrefix
 					}
 				}
 			}
 
-			fullText := prefix + text
-			if currentChange.Text != nil {
-				fullText = *currentChange.Text + "\n" + prefix + text
+			if prefix != "" {
+				fullText := prefix + text
+				if prefix == linePrefix {
+					sb := strings.Builder{}
+					for _, cText := range childText {
+						sb.WriteString(prefix)
+						sb.WriteString(cText)
+						sb.WriteString("\n")
+					}
+					fullText = sb.String()
+					fullText = fullText[:len(fullText)-1]
+				}
+
+				if currentChange.Text != nil {
+					fullText = *currentChange.Text + "\n" + fullText
+				}
+				currentChange.Text = &fullText
 			}
-			currentChange.Text = &fullText
 		}
 
 		current = current.NextSibling()
@@ -213,19 +227,20 @@ func parsingRegexes() (*regexp.Regexp, *regexp.Regexp, *regexp.Regexp, *regexp.R
 func writeToChangelogFile(file string, unreleased *change, released []*change, update bool) error {
 	sb := strings.Builder{}
 	sb.WriteString(changelogHeader)
-	unreleasedTextLines := strings.SplitN(*unreleased.Text, "\n", 2)
 	if update {
 		sb.WriteString(fmt.Sprintf("%s[%s] - %s\n", releasePrefix, unreleased.Version.String(), time.Now().Format("2006-01-02")))
 	} else {
 		sb.WriteString(*unreleased.VersionText)
 	}
 
-	if len(unreleasedTextLines) < 2 {
+	if unreleased.Text == nil || *unreleased.Text == "" || *unreleased.Text == "\n" {
 		return errors.New("no changes are recorded under the release")
 	}
 
-	sb.WriteString(unreleasedTextLines[1])
+	sb.WriteString(*unreleased.Text)
 	sb.WriteString("\n")
+
+	sLogger.Debug(sb.String())
 
 	for _, release := range released {
 		sb.WriteString("\n")
