@@ -124,6 +124,7 @@ func resolveConventionalCommits(git gitCli, changelogFile string) (*string, map[
 				}
 			}
 
+			uniqueHashes = append(uniqueHashes, commit.Hash)
 			return false
 		}()
 
