@@ -48,6 +48,7 @@ type GitLookupOptions struct {
 	GitEvaluate         bool   `short:"e" long:"git-evaluate" description:"Should git branches be evaluated when calcuating the most recent version?"`
 	GitWorkingDirectory string `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
 	GitPrefix           string `short:"p" long:"git-prefix" description:"The branch name prefix for releases" default:"release"`
+	UseTags             bool   `short:"t" long:"use-tags" description:"Use tags for release, instead of branches"`
 }
 
 type UpdateOptions struct {
@@ -62,4 +63,5 @@ type ReleaseOptions struct {
 	NonInteractive   bool     `short:"n" long:"non-interactive" description:"Should the step be run non interactively?"`
 	GitCommitMessage string   `short:"m" long:"git-commit-message" description:"The message to use for the git commit" default:"[skip ci] Release version %s"`
 	ReleaseFiles     []string `short:"r" long:"release-file" description:"Additional files to add to the release"`
+	VersionPrefix    string   `short:"v" long:"version-prefix" description:"Prefix for the version" default:"v"`
 }

@@ -32,18 +32,25 @@ func getLatestRelease(released []*change) *change {
 	return nil
 }
 
-func listReleasedVersionFromGit(git gitCli, prefix string, remotes ...string) ([]semver.Version, error) {
-	releaseBranches, err := git.listRemoteBranches(prefix, remotes...)
+func listReleasedVersionFromGit(useTags bool, git gitCli, prefix string, remotes ...string) ([]semver.Version, error) {
+	releaseRefs, err := git.listRemoteBranches(prefix, remotes...)
 	if err != nil {
 		return nil, err
 	}
 
-	releasedVersions := make([]semver.Version, 0)
-	for _, releaseBranch := range releaseBranches {
-		sLogger.Debugf("trying to parse trimmed branch name %s to a version", releaseBranch)
-		version, err := semver.ParseTolerant(releaseBranch)
+	if useTags {
+		releaseRefs, err = git.listTags(prefix)
 		if err != nil {
-			sLogger.Debugf("failed to parse trimmed branch name %s to a version", releaseBranch)
+			return nil, err
+		}
+	}
+
+	releasedVersions := make([]semver.Version, 0)
+	for _, releaseRef := range releaseRefs {
+		sLogger.Debugf("trying to parse trimmed release name %s to a version", releaseRef)
+		version, err := semver.ParseTolerant(releaseRef)
+		if err != nil {
+			sLogger.Debugf("failed to parse trimmed release name %s to a version", releaseRef)
 			sLogger.Debug(err.Error())
 			continue
 		}

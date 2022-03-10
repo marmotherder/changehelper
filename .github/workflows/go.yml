@@ -1,0 +1,180 @@
+name: Go
+
+on:
+  push:
+    branches:
+    - main
+    tags:
+    - release/v**
+  pull_request:
+    branches:
+    - main
+
+jobs:
+
+  update:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch:
+        - amd64
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17.8
+
+    - name: Build Current
+      run: go build
+      env:
+        CGO_ENABLED: 1
+      shell: bash
+
+    - name: Set version
+      run: |
+        chmod 755 ./changehelper && ./changehelper update -t -llll
+        CURRENT_VERSION=$(./changehelper print-current)
+        sed -i "s,0.0.0,$CURRENT_VERSION,g" version.go
+      shell: bash
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: changehelper_linux_amd64_binary
+        path: changehelper
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: version
+        path: version.go
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: changelog
+        path: CHANGELOG.md
+
+  build-windows:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch:
+        - amd64
+    needs:
+    - update
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - id: Build_changehelper
+      uses: ./.github/actions/build-changehelper
+      with:
+        os: windows
+        arch: ${{ matrix.arch }}
+        binary: changehelper.exe
+
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch:
+        - amd64
+    needs:
+    - update
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - id: Build_changehelper
+      uses: ./.github/actions/build-changehelper
+      with:
+        os: linux
+        arch: ${{ matrix.arch }}
+        binary: changehelper
+
+  build-darwin:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch:
+        - amd64
+    needs:
+    - update
+    steps:
+
+    - uses: actions/checkout@v2
+    
+    - id: Build_changehelper
+      uses: ./.github/actions/build-changehelper
+      with:
+        os: darwin
+        arch: ${{ matrix.arch }}
+        binary: changehelper
+
+  update-changelog:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch:
+        - amd64
+    if: startsWith(github.ref, 'refs/heads/main')
+    needs:
+    - build-windows
+    - build-linux
+    - build-darwin
+    outputs:
+      version: ${{ steps.Version.outputs.version }}
+    steps:
+
+    - uses: actions/checkout@v2
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: changehelper_linux_amd64_binary
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: changelog
+
+    - name: Setup git credentials
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+
+        echo $SSH_KEY > ./id_rsa
+      env:
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+      shell: bash
+
+    - name: Release
+      run: chmod 744 ./changehelper && GIT_SSH_COMMAND="ssh -i ${GITHUB_WORKSPACE}/id_rsa" ./changehelper release -t -m 'Release version %s' -llll
+      shell: bash
+
+  publish:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch:
+        - amd64
+    if: startsWith(github.ref, 'refs/tags')
+    needs:
+    - build-windows
+    - build-linux
+    - build-darwin
+    steps:
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: changehelper_windows_amd64
+    - uses: actions/download-artifact@v2
+      with:
+        name: changehelper_linux_amd64
+    - uses: actions/download-artifact@v2
+      with:
+        name: changehelper_darwin_amd64
+
+    - name: Release
+      uses: softprops/action-gh-release@v0.1.14
+      with:
+        files: '*.zip'
