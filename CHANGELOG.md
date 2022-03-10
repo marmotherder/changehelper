@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2022-03-10
+### Added
+- README.md; fix: add extra debugging for build
+- conventional_commits.go; fix: add extra debugging for build
+- models.go; fix: add extra debugging for build
+- semver.go; fix: add extra debugging for build
+- logger.go; fix: add extra debugging for build
+- utils.go; fix: add extra debugging for build
+- changelog.go; fix: add extra debugging for build
+- git.go; fix: add extra debugging for build
+- LICENSE; fix: add extra debugging for build
+- main.go; fix: add extra debugging for build
+- .github/actions/build-changehelper/action.yml; fix: add extra debugging for build
+- go.sum; fix: add extra debugging for build
+- cmd.go; fix: add extra debugging for build
+- version.go; fix: add extra debugging for build
+- .gitignore; fix: add extra debugging for build
+- options.go; fix: add extra debugging for build
+- go.mod; fix: add extra debugging for build
+- .github/workflows/go.yml; fix: add extra debugging for build
+- operations.go; fix: add extra debugging for build
+
 ## [1.0.4] - 2022-03-10
 ### Added
 - logger.go; build: add workflow_dispatch trigger
