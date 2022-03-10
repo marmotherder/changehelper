@@ -18,6 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - conventional_commits.go; fix: allow clog self reference, fix: updated readability
 - models.go; fix: allow clog self reference
 
-## [1.0.0] - 2022-03-04
+## [0.0.0] - 2022-03-04
 ### Added
 - feat: Initial release
