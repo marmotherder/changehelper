@@ -103,12 +103,12 @@ func resolveConventionalCommits(git gitCli, changelogFile string) (*string, map[
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
-	selfCommit, err := git.listCommits("-n 1 " + *lastCommit)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
+	// selfCommit, err := git.listCommits("-n 1 " + *lastCommit)
+	// if err != nil {
+	// 	return nil, nil, nil, nil, nil, err
+	// }
 
-	commits = append(commits, selfCommit...)
+	// commits = append(commits, selfCommit...)
 
 	var commitMessages []string
 	for _, commit := range commits {
