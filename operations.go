@@ -174,7 +174,7 @@ func update() {
 	}
 
 	if options.GitEvaluate {
-		gitVersions, err := listReleasedVersionFromGit(git, options.GitPrefix)
+		gitVersions, err := listReleasedVersionFromGit(options.UseTags, git, options.GitPrefix)
 		if err != nil {
 			sLogger.Error("failed to lookup versions from git")
 			sLogger.Fatal(err.Error())
@@ -329,6 +329,10 @@ func release() {
 		}
 	}
 
+	if err := git.fetch(); err != nil {
+		sLogger.Error("failed to run a git fetch, trying to continue anyway")
+	}
+
 	releaseFiles := []string{options.ChangelogFile}
 	if len(options.ReleaseFiles) > 0 {
 		releaseFiles = append(releaseFiles, options.ReleaseFiles...)
@@ -351,22 +355,38 @@ func release() {
 		sLogger.Fatal(err.Error())
 	}
 
-	majorBranch := fmt.Sprintf("%s/%d", options.GitPrefix, version.Major)
-	minorBranch := fmt.Sprintf("%s.%d", majorBranch, version.Minor)
-	patchBranch := fmt.Sprintf("%s.%d", minorBranch, version.Patch)
+	majorRef := fmt.Sprintf("%s/%s%d", options.GitPrefix, options.VersionPrefix, version.Major)
+	minorRef := fmt.Sprintf("%s.%d", majorRef, version.Minor)
+	patchRef := fmt.Sprintf("%s.%d", minorRef, version.Patch)
 
+	remote := getRemote(git)
 	failed := false
-	if err := git.resetBranch(getRemote(git), branch, majorBranch); err != nil {
-		sLogger.Error("failed to update/create the major branch")
-		failed = true
-	}
-	if err := git.resetBranch(getRemote(git), branch, minorBranch); err != nil {
-		sLogger.Error("failed to update/create the minor branch")
-		failed = true
-	}
-	if err := git.resetBranch(getRemote(git), branch, patchBranch); err != nil {
-		sLogger.Error("failed to update/create the patch branch")
-		failed = true
+	if options.UseTags {
+		if err := git.resetTag(remote, majorRef); err != nil {
+			sLogger.Error("failed to update/create the major tag")
+			failed = true
+		}
+		if err := git.resetTag(remote, minorRef); err != nil {
+			sLogger.Error("failed to update/create the minor tag")
+			failed = true
+		}
+		if err := git.resetTag(remote, patchRef); err != nil {
+			sLogger.Error("failed to update/create the patch tag")
+			failed = true
+		}
+	} else {
+		if err := git.resetBranch(remote, branch, majorRef); err != nil {
+			sLogger.Error("failed to update/create the major branch")
+			failed = true
+		}
+		if err := git.resetBranch(remote, branch, minorRef); err != nil {
+			sLogger.Error("failed to update/create the minor branch")
+			failed = true
+		}
+		if err := git.resetBranch(remote, branch, patchRef); err != nil {
+			sLogger.Error("failed to update/create the patch branch")
+			failed = true
+		}
 	}
 
 	if failed {

@@ -1,0 +1,60 @@
+name: Build changehelper
+description: Build changehelper
+inputs:
+  os:
+    description: Build operating system
+    required: true
+  arch:
+    description: Build architecture
+    required: true
+  binary:
+    description: Expected name of the binary
+    required: true
+runs:
+  using: composite
+  steps:
+
+  - name: Set up Go
+    uses: actions/setup-go@v2
+    with:
+      go-version: 1.17.8
+
+  - uses: actions/download-artifact@v2
+    with:
+      name: version
+
+  - name: Build
+    run: go build
+    env:
+      GOARCH: ${{ inputs.arch }}
+      CGO_ENABLED: 1
+      GOOS: ${{ inputs.os }}
+    shell: bash
+
+  - name: Create release dir
+    run: mkdir -p /tmp/release
+    shell: bash
+
+  - name: Zip binary
+    uses: montudor/action-zip@v1
+    if: inputs.os != 'darwin'
+    with:
+      args: zip changehelper_${{ inputs.os }}_${{ inputs.arch }}.zip ${{ inputs.binary }}
+
+  - name: Zip binary
+    if: inputs.os == 'darwin'
+    run: zip changehelper_${{ inputs.os }}_${{ inputs.arch }}.zip ${{ inputs.binary }}
+    shell: bash
+
+  - name: Move binary
+    run: mv changehelper_${{ inputs.os }}_${{ inputs.arch }}.zip /tmp/release/changehelper_${{ inputs.os }}_${{ inputs.arch }}.zip
+    shell: bash
+
+  - name: Test
+    run: go test
+    shell: bash
+
+  - uses: actions/upload-artifact@v2
+    with:
+      name: changehelper_${{ inputs.os }}_${{ inputs.arch }}
+      path: /tmp/release/changehelper_${{ inputs.os }}_${{ inputs.arch }}.zip

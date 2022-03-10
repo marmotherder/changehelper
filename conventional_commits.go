@@ -81,11 +81,14 @@ func parseConventionalCommitMessages(commitMessages ...string) (*string, map[int
 
 		if ccMessage.IsBreakingChange() {
 			increment = MAJOR
+			sLogger.Debug("increment set as " + MAJOR)
 		} else if increment != MAJOR {
 			if *ccType == conventionalCommitFeat {
 				increment = MINOR
+				sLogger.Debug("increment set as " + MINOR)
 			} else if increment != MINOR {
 				increment = PATCH
+				sLogger.Debug("increment set as " + PATCH)
 			}
 		}
 	}
