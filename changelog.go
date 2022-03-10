@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -217,6 +218,10 @@ func writeToChangelogFile(file string, unreleased *change, released []*change, u
 		sb.WriteString(fmt.Sprintf("%s [%s] - %s\n", releasePrefix, unreleased.Version.String(), time.Now().Format("2006-01-02")))
 	} else {
 		sb.WriteString(*unreleased.VersionText)
+	}
+
+	if len(unreleasedTextLines) < 2 {
+		return errors.New("no changes are recorded under the release")
 	}
 
 	sb.WriteString(unreleasedTextLines[1])
