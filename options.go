@@ -26,11 +26,15 @@ type GlobalOptions struct {
 	ChangelogFile string `short:"f" long:"changelog-file" description:"Location of the changelog file" default:"./CHANGELOG.md"`
 }
 
+type GeneralGitOptions struct {
+	GitBranch           string `short:"b" long:"git-branch" description:"Git branch to run against"`
+	GitWorkingDirectory string `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
+	SkipGitCheckout     bool   `short:"s" long:"skip-git-checkout" description:"Skip running git checkout?"`
+}
+
 type NewVersionOptions struct {
 	GlobalOptions
-	GitBranch                 string   `short:"b" long:"git-branch" description:"Git branch to run against"`
-	GitWorkingDirectory       string   `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
-	SkipGitCheckout           bool     `short:"s" long:"skip-git-checkout" description:"Skip running git checkout?"`
+	GeneralGitOptions
 	Increment                 string   `short:"i" long:"increment" description:"The incrementation level to use"`
 	Force                     bool     `short:"o" long:"force" description:"If there's a pending release in the changelog, should it be overwritten by this run?"`
 	Manual                    bool     `short:"m" long:"manual" description:"Don't attempt to evaluate any changes from git, and only load manually"`
@@ -64,4 +68,12 @@ type ReleaseOptions struct {
 	GitCommitMessage string   `short:"m" long:"git-commit-message" description:"The message to use for the git commit" default:"[skip ci] Release version %s"`
 	ReleaseFiles     []string `short:"r" long:"release-file" description:"Additional files to add to the release"`
 	VersionPrefix    string   `short:"v" long:"version-prefix" description:"Prefix for the version" default:"v"`
+}
+
+type EnforceConventionalCommitsOptions struct {
+	GlobalOptions
+	GeneralGitOptions
+	Depth                       int  `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"1"`
+	UseLastChangelogChange      bool `short:"u" long:"use-changelog" description:"Automatically determine the depth by finding the last time changelog changed in the tree, and comparing from there. If set, will override depth option"`
+	AllowNonConventionalcommits bool `short:"a" long:"allow" description:"Allows non conventional commits to be present. Will pass if at least one conventional commits is found"`
 }
