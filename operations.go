@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/blang/semver"
+	"github.com/leodido/go-conventionalcommits"
+	"github.com/leodido/go-conventionalcommits/parser"
 	"github.com/manifoldco/promptui"
 )
 
@@ -391,5 +393,94 @@ func release() {
 
 	if failed {
 		sLogger.Fatal("one or more branches did not successfully update/create")
+	}
+}
+
+func enforceUnreleased(changelogFile string) {
+	_, unreleased, _, _, err := parseChangelog(changelogFile)
+	if err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	if unreleased == nil {
+		sLogger.Fatal("no unreleased change detected in changelogfile file")
+	}
+}
+
+func enforceConventionalCommits() {
+	var options EnforceConventionalCommitsOptions
+	parseOptions(&options)
+
+	git := gitCli{
+		WorkingDirectory: options.GitWorkingDirectory,
+	}
+
+	branch := mustHaveBranch(options.GitBranch, "", true, git)
+
+	if !options.SkipGitCheckout {
+		if err := git.checkoutAndPull(branch); err != nil {
+			sLogger.Fatal(err.Error())
+		}
+	}
+
+	if err := git.fetch(); err != nil {
+		sLogger.Error("failed to run a git fetch, trying to continue anyway")
+	}
+
+	var commits []gitCommit
+	if options.UseLastChangelogChange {
+		cLogCommit, err := git.getLastModifiedCommit(options.ChangelogFile)
+		if err != nil {
+			sLogger.Errorf("failed to get the last change for the changelog file %s", options.ChangelogFile)
+			sLogger.Fatal(err.Error())
+		}
+
+		commits, err = git.listCommits(*cLogCommit + "..HEAD")
+		if err != nil {
+			sLogger.Errorf("could not list the commits between HEAD and %s", *cLogCommit)
+			sLogger.Fatal(err.Error())
+		}
+	} else {
+		var err error
+		commits, err = git.listCommits(fmt.Sprintf("HEAD~%d..HEAD", options.Depth))
+		if err != nil {
+			sLogger.Errorf("could not list the commits between HEAD and HEAD~%d", options.Depth)
+			sLogger.Fatal(err.Error())
+		}
+	}
+
+	machineOptions := []conventionalcommits.MachineOption{
+		conventionalcommits.WithTypes(conventionalcommits.TypesConventional),
+		conventionalcommits.WithBestEffort(),
+	}
+	machine := parser.NewMachine(machineOptions...)
+
+	failures := []int{}
+	for idx, commit := range commits {
+		ccMessage, err := machine.Parse([]byte(commit.Message))
+		if err != nil {
+			sLogger.Info(err.Error())
+			failures = append(failures, idx)
+			continue
+		}
+		if !ccMessage.Ok() {
+			failures = append(failures, idx)
+		}
+	}
+
+	if len(failures) > 0 {
+		sb := strings.Builder{}
+		sb.WriteString("not all commits were found to adhere to conventional commit principles\n\n")
+
+		for _, idx := range failures {
+			commit := commits[idx]
+			sb.WriteString(fmt.Sprintf("Commit: %s was not conventional commit, instead found unparseable message: %s\n", commit.Hash, commit.Message))
+		}
+
+		if options.AllowNonConventionalcommits {
+			sLogger.Warn(sb.String())
+		} else {
+			sLogger.Fatal(sb.String())
+		}
 	}
 }
