@@ -12,12 +12,14 @@ const operationsText = `Usage = changehelper [global options] <operation>
 
 Operations:
 
-new-version			Create a new in progress version interactively
-print-current			Print the current version in the changelog file
-print-unreleased		Print the unreleased version based on the changelog file, or conventional commit(s)
-update				Update the version in the changelog file
-release				Commit and push changes to git, ie changes to the changelog, and branches
-update-and-release		Run update, followed by release in order
+new-version				Create a new in progress version interactively
+print-current				Print the current version in the changelog file
+print-unreleased			Print the unreleased version based on the changelog file, or conventional commit(s)
+update					Update the version in the changelog file
+release					Commit and push changes to git, ie changes to the changelog, and branches
+update-and-release			Run update, followed by release in order
+enforce-unreleased			Validate that there is a pending unreleased change
+enforce-conventional-commits		Enforce that all commits adhere to conventional commit standards
 version					Print the tool version
 
 Global Options:
@@ -63,6 +65,10 @@ func main() {
 
 	switch operation {
 
+	case "enforce-unreleased":
+		enforceUnreleased(options.ChangelogFile)
+	case "enforce-conventional-commits":
+		enforceConventionalCommits()
 	case "new-version":
 		newVersion()
 	case "print-current":
