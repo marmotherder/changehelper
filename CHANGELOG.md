@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2022-03-15
+### Added
+- main.go; feat: add enforcement options for conventional commits
+- .gitignore; feat: add enforcement options for conventional commits
+- LICENSE; feat: add enforcement options for conventional commits
+- conventional_commits.go; feat: add enforcement options for conventional commits
+- go.sum; feat: add enforcement options for conventional commits
+- options.go; feat: add enforcement options for conventional commits
+- version.go; feat: add enforcement options for conventional commits
+- semver.go; feat: add enforcement options for conventional commits
+- utils.go; feat: add enforcement options for conventional commits
+- changelog.go; feat: add enforcement options for conventional commits
+- operations.go; feat: add enforcement options for conventional commits
+- .github/actions/build-changehelper/action.yml; feat: add enforcement options for conventional commits
+- .github/workflows/go.yml; feat: add enforcement options for conventional commits
+- README.md; feat: add enforcement options for conventional commits
+- git.go; feat: add enforcement options for conventional commits
+- logger.go; feat: add enforcement options for conventional commits
+- models.go; feat: add enforcement options for conventional commits
+- cmd.go; feat: add enforcement options for conventional commits
+- go.mod; feat: add enforcement options for conventional commits
+
 ## [1.0.6] - 2022-03-10
 ### Added
 - conventional_commits.go; build: Set version in tags
