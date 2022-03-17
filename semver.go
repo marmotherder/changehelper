@@ -5,8 +5,11 @@ import (
 )
 
 const (
+	// PATCH as semver patch level increment
 	PATCH = "PATCH"
+	// MINOR as semver minor level increment
 	MINOR = "MINOR"
+	// MAJOR as semver major level increment
 	MAJOR = "MAJOR"
 )
 
