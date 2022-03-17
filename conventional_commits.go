@@ -100,16 +100,34 @@ func parseConventionalCommitMessages(commitMessages ...string) (*string, map[int
 	return &increment, mappedTypes
 }
 
-func resolveConventionalCommits(git gitCli, changelogFile string) (*string, map[string]string, map[string]string, map[string]string, map[string]string, error) {
+func resolveConventionalCommits(git gitCli, changelogFile string, depth int) (*string, map[string]string, map[string]string, map[string]string, map[string]string, error) {
+	var commits []gitCommit
+	if depth > 0 {
+		var err error
+		commits, err = git.listCommits(fmt.Sprintf("HEAD~%d..HEAD", depth))
+		if err != nil {
+			sLogger.Errorf("could not list the commits between HEAD and HEAD~%d", depth)
+			sLogger.Fatal(err.Error())
+		}
+	} else {
+		cLogCommit, err := git.getLastModifiedCommit(changelogFile)
+		if err != nil {
+			sLogger.Errorf("failed to get the last change for the changelog file %s", changelogFile)
+			sLogger.Fatal(err.Error())
+		}
+
+		commits, err = git.listCommits(*cLogCommit + "..HEAD")
+		if err != nil {
+			sLogger.Errorf("could not list the commits between HEAD and %s", *cLogCommit)
+			sLogger.Fatal(err.Error())
+		}
+	}
+
 	lastCommit, err := git.getLastModifiedCommit(changelogFile)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
 	}
 
-	commits, err := git.listCommits(*lastCommit + "..")
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
 	selfCommit, err := git.listCommits("-n 1 " + *lastCommit)
 	if err != nil {
 		return nil, nil, nil, nil, nil, err
