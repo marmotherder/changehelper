@@ -1,6 +1,6 @@
 # **changehelper**
 
-[![Build](https://github.com/marmotherder/changehelper/actions/workflows/go.yml/badge.svg)](https://github.com/marmotherder/changehelper/actions/workflows/go.yml)
+[![Build](https://github.com/marmotherder/changehelper/actions/workflows/go.yml/badge.svg)](https://github.com/marmotherder/changehelper/actions/workflows/go.yml) [![Go Report Card](https://goreportcard.com/badge/github.com/marmotherder/changehelper)](https://goreportcard.com/report/github.com/marmotherder/changehelper)
 
 The changehelper tool is a cli designed to handle most semantic versioning scenarios via a series of easy to use commands. The tool follows the standards as defined in the [semantic versioning](https://semver.org/) specification.
 
