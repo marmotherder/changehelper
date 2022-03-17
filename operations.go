@@ -89,6 +89,7 @@ func newVersion() {
 			ccIncrement, err := loadConventionalCommitsToChange(
 				options.GitWorkingDirectory,
 				options.ChangelogFile,
+				options.Depth,
 				&newChange,
 				git,
 			)
@@ -209,6 +210,7 @@ func update() {
 		increment, err = loadConventionalCommitsToChange(
 			options.GitWorkingDirectory,
 			options.ChangelogFile,
+			options.Depth,
 			unreleased,
 			git,
 		)
@@ -259,10 +261,11 @@ func update() {
 func loadConventionalCommitsToChange(
 	dir,
 	changelogFile string,
+	depth int,
 	change *change,
 	git gitCli,
 ) (*string, error) {
-	increment, fixedUnique, addedUnique, changedUnique, removedUnique, err := resolveConventionalCommits(git, changelogFile)
+	increment, fixedUnique, addedUnique, changedUnique, removedUnique, err := resolveConventionalCommits(git, changelogFile, depth)
 	if err != nil {
 		sLogger.Error("failed to lookup conventional commits when running update")
 		return nil, err
@@ -428,7 +431,14 @@ func enforceConventionalCommits() {
 	}
 
 	var commits []gitCommit
-	if options.UseLastChangelogChange {
+	if options.Depth > 0 {
+		var err error
+		commits, err = git.listCommits(fmt.Sprintf("HEAD~%d..HEAD", options.Depth))
+		if err != nil {
+			sLogger.Errorf("could not list the commits between HEAD and HEAD~%d", options.Depth)
+			sLogger.Fatal(err.Error())
+		}
+	} else {
 		cLogCommit, err := git.getLastModifiedCommit(options.ChangelogFile)
 		if err != nil {
 			sLogger.Errorf("failed to get the last change for the changelog file %s", options.ChangelogFile)
@@ -438,13 +448,6 @@ func enforceConventionalCommits() {
 		commits, err = git.listCommits(*cLogCommit + "..HEAD")
 		if err != nil {
 			sLogger.Errorf("could not list the commits between HEAD and %s", *cLogCommit)
-			sLogger.Fatal(err.Error())
-		}
-	} else {
-		var err error
-		commits, err = git.listCommits(fmt.Sprintf("HEAD~%d..HEAD", options.Depth))
-		if err != nil {
-			sLogger.Errorf("could not list the commits between HEAD and HEAD~%d", options.Depth)
 			sLogger.Fatal(err.Error())
 		}
 	}
