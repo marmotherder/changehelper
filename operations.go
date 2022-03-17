@@ -54,73 +54,8 @@ func newVersion() {
 	}
 	increment := ""
 
-	gitResolve := true
-	if !options.NonInteractive {
-		if options.Manual {
-			prompt := promptui.Select{
-				Label: "Should the new version attempt to be resolved from git?",
-				Items: []string{"Yes", "No"},
-			}
-
-			_, confirm, err := prompt.Run()
-			if err != nil {
-				sLogger.Fatal(err.Error())
-			}
-
-			if confirm == "No" {
-				gitResolve = false
-			}
-		}
-	}
-
-	if gitResolve {
-		branch := mustHaveBranch(options.GitBranch, "What git branch should the changes be loaded from?", options.NonInteractive, git)
-
-		if !options.SkipGitCheckout {
-			if err := git.checkoutAndPull(branch); err != nil {
-				sLogger.Fatal(err.Error())
-			}
-		}
-
-		hasConventionalCommits := func() bool {
-			if options.IgnoreConventionalCommits {
-				return false
-			}
-			ccIncrement, err := loadConventionalCommitsToChange(
-				options.GitWorkingDirectory,
-				options.ChangelogFile,
-				options.Depth,
-				&newChange,
-				git,
-			)
-			if err != nil {
-				sLogger.Warn("failed to use conventional commits, falling back to diff only")
-				sLogger.Debug(err.Error())
-				return false
-			}
-
-			increment = *ccIncrement
-
-			return true
-		}()
-
-		if !hasConventionalCommits {
-			diff, err := git.diff(branch, getRemote(git)+"/HEAD")
-			if err != nil {
-				sLogger.Error("failed to resolve diff from git")
-				sLogger.Fatal(err.Error())
-			}
-
-			for _, added := range diff.Added {
-				newChange.Added = append(newChange.Added, "- "+added)
-			}
-			for _, changed := range diff.Changed {
-				newChange.Changed = append(newChange.Changed, "- "+changed)
-			}
-			for _, removed := range diff.Removed {
-				newChange.Removed = append(newChange.Removed, "- "+removed)
-			}
-		}
+	if mustGitResolveQuery(options.NonInteractive, options.Manual) {
+		resolveVersionFromGit(options, git, &newChange, &increment)
 	} else if !options.NonInteractive {
 		mustCaptureMultiLineInput("Was anything added this release?", "Was anything more added this release?", "Describe what was added in this release", &newChange.Added)
 		mustCaptureMultiLineInput("Was anything changed this release?", "Was anything more changed this release?", "Describe what was changed in this release", &newChange.Changed)
@@ -153,6 +88,78 @@ func newVersion() {
 
 	if err := writeToChangelogFile(options.ChangelogFile, &newChange, released, false); err != nil {
 		sLogger.Fatal(err.Error())
+	}
+}
+
+func mustGitResolveQuery(nonInteractive, manual bool) bool {
+	if !nonInteractive {
+		if manual {
+			prompt := promptui.Select{
+				Label: "Should the new version attempt to be resolved from git?",
+				Items: []string{"Yes", "No"},
+			}
+
+			_, confirm, err := prompt.Run()
+			if err != nil {
+				sLogger.Fatal(err.Error())
+			}
+
+			if confirm == "No" {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func resolveVersionFromGit(options NewVersionOptions, git gitCli, newChange *change, increment *string) {
+	branch := mustHaveBranch(options.GitBranch, "What git branch should the changes be loaded from?", options.NonInteractive, git)
+
+	if !options.SkipGitCheckout {
+		if err := git.checkoutAndPull(branch); err != nil {
+			sLogger.Fatal(err.Error())
+		}
+	}
+
+	hasConventionalCommits := func() bool {
+		if options.IgnoreConventionalCommits {
+			return false
+		}
+		ccIncrement, err := loadConventionalCommitsToChange(
+			options.GitWorkingDirectory,
+			options.ChangelogFile,
+			options.Depth,
+			newChange,
+			git,
+		)
+		if err != nil {
+			sLogger.Warn("failed to use conventional commits, falling back to diff only")
+			sLogger.Debug(err.Error())
+			return false
+		}
+
+		increment = ccIncrement
+
+		return true
+	}()
+
+	if !hasConventionalCommits {
+		diff, err := git.diff(branch, getRemote(git)+"/HEAD")
+		if err != nil {
+			sLogger.Error("failed to resolve diff from git")
+			sLogger.Fatal(err.Error())
+		}
+
+		for _, added := range diff.Added {
+			newChange.Added = append(newChange.Added, "- "+added)
+		}
+		for _, changed := range diff.Changed {
+			newChange.Changed = append(newChange.Changed, "- "+changed)
+		}
+		for _, removed := range diff.Removed {
+			newChange.Removed = append(newChange.Removed, "- "+removed)
+		}
 	}
 }
 
@@ -360,41 +367,12 @@ func release() {
 		sLogger.Fatal(err.Error())
 	}
 
-	majorRef := fmt.Sprintf("%s/%s%d", options.GitPrefix, options.VersionPrefix, version.Major)
-	minorRef := fmt.Sprintf("%s.%d", majorRef, version.Minor)
-	patchRef := fmt.Sprintf("%s.%d", minorRef, version.Patch)
+	errs := createOrUpdateReleaseRefs(options.UseTags, options.GitBranch, options.GitPrefix, options.VersionPrefix, version, git)
 
-	remote := getRemote(git)
-	failed := false
-	if options.UseTags {
-		if err := git.resetTag(remote, majorRef); err != nil {
-			sLogger.Error("failed to update/create the major tag")
-			failed = true
+	if len(errs) > 0 {
+		for _, err := range errs {
+			sLogger.Error(err.Error())
 		}
-		if err := git.resetTag(remote, minorRef); err != nil {
-			sLogger.Error("failed to update/create the minor tag")
-			failed = true
-		}
-		if err := git.resetTag(remote, patchRef); err != nil {
-			sLogger.Error("failed to update/create the patch tag")
-			failed = true
-		}
-	} else {
-		if err := git.resetBranch(remote, branch, majorRef); err != nil {
-			sLogger.Error("failed to update/create the major branch")
-			failed = true
-		}
-		if err := git.resetBranch(remote, branch, minorRef); err != nil {
-			sLogger.Error("failed to update/create the minor branch")
-			failed = true
-		}
-		if err := git.resetBranch(remote, branch, patchRef); err != nil {
-			sLogger.Error("failed to update/create the patch branch")
-			failed = true
-		}
-	}
-
-	if failed {
 		sLogger.Fatal("one or more branches did not successfully update/create")
 	}
 }
@@ -408,6 +386,39 @@ func enforceUnreleased(changelogFile string) {
 	if unreleased == nil {
 		sLogger.Fatal("no unreleased change detected in changelogfile file")
 	}
+}
+
+func createOrUpdateReleaseRefs(useTags bool, branch, gitPrefix, versionPrefix string, version *semver.Version, git gitCli) []error {
+	remote := getRemote(git)
+
+	majorRef := fmt.Sprintf("%s/%s%d", gitPrefix, versionPrefix, version.Major)
+	minorRef := fmt.Sprintf("%s.%d", majorRef, version.Minor)
+	patchRef := fmt.Sprintf("%s.%d", minorRef, version.Patch)
+
+	errs := []error{}
+	if useTags {
+		if err := git.resetTag(remote, majorRef); err != nil {
+			errs = append(errs, errors.New("failed to update/create the major tag"))
+		}
+		if err := git.resetTag(remote, minorRef); err != nil {
+			errs = append(errs, errors.New("failed to update/create the minor tag"))
+		}
+		if err := git.resetTag(remote, patchRef); err != nil {
+			errs = append(errs, errors.New("failed to update/create the patch tag"))
+		}
+	} else {
+		if err := git.resetBranch(remote, branch, majorRef); err != nil {
+			errs = append(errs, errors.New("failed to update/create the major branch"))
+		}
+		if err := git.resetBranch(remote, branch, minorRef); err != nil {
+			errs = append(errs, errors.New("failed to update/create the minor branch"))
+		}
+		if err := git.resetBranch(remote, branch, patchRef); err != nil {
+			errs = append(errs, errors.New("failed to update/create the patch branch"))
+		}
+	}
+
+	return errs
 }
 
 func enforceConventionalCommits() {
