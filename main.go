@@ -83,7 +83,7 @@ func main() {
 	case "release":
 		release()
 	case "version":
-		fmt.Print(version)
+		fmt.Println(version)
 	default:
 		fmt.Println(operationsText)
 		os.Exit(execError)
