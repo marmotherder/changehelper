@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/jessevdk/go-flags"
@@ -33,23 +32,7 @@ func main() {
 	parser := flags.NewParser(&options, flags.IgnoreUnknown)
 	args, err := parser.ParseArgs(os.Args)
 	if err != nil {
-		usedHelp := func() bool {
-			for _, arg := range os.Args {
-				if arg == "-h" || arg == "--help" || arg == "help" {
-					return true
-				}
-			}
-			return false
-		}
-
-		if usedHelp() {
-			os.Exit(0)
-		}
-
-		if setupErr := setupLogger(0); setupErr != nil {
-			sLogger.Fatal(err.Error())
-		}
-		log.Fatalln(err.Error())
+		handleArgsErr(err)
 	}
 
 	if len(args) < 2 {
