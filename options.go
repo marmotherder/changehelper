@@ -21,17 +21,20 @@ func parseOptions(options interface{}) {
 	sLogger.Debug("successfully loaded cli options")
 }
 
+// GlobalOptions is the global options for all cli operations
 type GlobalOptions struct {
 	LogLevel      []bool `short:"l" long:"log-level" description:"Level of logging verbosity"`
 	ChangelogFile string `short:"f" long:"changelog-file" description:"Location of the changelog file" default:"./CHANGELOG.md"`
 }
 
+// GeneralGitOptions are the options used most generally for git supporting operations
 type GeneralGitOptions struct {
 	GitBranch           string `short:"b" long:"git-branch" description:"Git branch to run against"`
 	GitWorkingDirectory string `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
 	SkipGitCheckout     bool   `short:"s" long:"skip-git-checkout" description:"Skip running git checkout?"`
 }
 
+// NewVersionOptions are the options used by the new version operation
 type NewVersionOptions struct {
 	GlobalOptions
 	GeneralGitOptions
@@ -49,6 +52,7 @@ type NewVersionOptions struct {
 	Depth                     int      `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
 }
 
+// GitLookupOptions are generral the options used operations running git lookup commands
 type GitLookupOptions struct {
 	GitEvaluate         bool   `short:"e" long:"git-evaluate" description:"Should git branches be evaluated when calcuating the most recent version?"`
 	GitWorkingDirectory string `short:"w" long:"git-workdir" description:"Working directory of the git repository" default:"./"`
@@ -56,6 +60,7 @@ type GitLookupOptions struct {
 	UseTags             bool   `short:"t" long:"use-tags" description:"Use tags for release, instead of branches"`
 }
 
+// UpdateOptions are the options used by the update operation
 type UpdateOptions struct {
 	GlobalOptions
 	GitLookupOptions
@@ -63,6 +68,7 @@ type UpdateOptions struct {
 	Depth     int    `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
 }
 
+// ReleaseOptions are the options used by the release operation
 type ReleaseOptions struct {
 	UpdateOptions
 	SkipGitCheckout  bool     `short:"s" long:"skip-git-checkout" description:"Skip running git checkout?"`
@@ -72,6 +78,7 @@ type ReleaseOptions struct {
 	VersionPrefix    string   `short:"v" long:"version-prefix" description:"Prefix for the version" default:"v"`
 }
 
+// EnforceConventionalCommitsOption sare the options used by the enforce conventional commits operation
 type EnforceConventionalCommitsOptions struct {
 	GlobalOptions
 	GeneralGitOptions
