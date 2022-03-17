@@ -68,11 +68,6 @@ func (c *change) renderChangeText(increment ...string) {
 	sLogger.Debug(text)
 }
 
-func nodeText(node ast.Node, source []byte) *string {
-	text := string(node.Text(source))
-	return &text
-}
-
 func loopChildren(node ast.Node, source []byte) []string {
 	text := []string{}
 
