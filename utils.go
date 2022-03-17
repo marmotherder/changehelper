@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -41,7 +43,7 @@ func captureMultiLineInput(query, queryContinue, label string, obj *[]string) er
 				return err
 			}
 
-			*obj = append(*obj, result)
+			*obj = append(*obj, "- "+result)
 
 			queryContinueSelect := promptui.Select{
 				Label: queryContinue,
@@ -177,4 +179,24 @@ func getRemote(git gitCli) string {
 	}
 
 	return remote
+}
+
+func handleArgsErr(err error) {
+	usedHelp := func() bool {
+		for _, arg := range os.Args {
+			if arg == "-h" || arg == "--help" || arg == "help" {
+				return true
+			}
+		}
+		return false
+	}
+
+	if usedHelp() {
+		os.Exit(0)
+	}
+
+	if setupErr := setupLogger(0); setupErr != nil {
+		sLogger.Fatal(err.Error())
+	}
+	log.Fatalln(err.Error())
 }

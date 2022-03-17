@@ -161,6 +161,11 @@ func resolveConventionalCommits(git gitCli, changelogFile string, depth int) (*s
 		commitMessages = append(commitMessages, commit.Message)
 	}
 
+	increment, fixedUnique, addedUnique, changedUnique, removedUnique := getUniqueConventionalCommitMessages(commitMessages, uniqueCommits, git)
+	return increment, fixedUnique, addedUnique, changedUnique, removedUnique, nil
+}
+
+func getUniqueConventionalCommitMessages(commitMessages []string, uniqueCommits []gitCommit, git gitCli) (*string, map[string]string, map[string]string, map[string]string, map[string]string) {
 	increment, mappedTypes := parseConventionalCommitMessages(commitMessages...)
 
 	fixedUnique := map[string]string{}
@@ -177,40 +182,26 @@ func resolveConventionalCommits(git gitCli, changelogFile string, depth int) (*s
 
 		switch ccType {
 		case conventionalCommitFix:
-			for _, changed := range diff.Changed {
-				if existing, ok := fixedUnique[changed]; ok {
-					fixedUnique[changed] = existing + ", " + commit.Message
-				} else {
-					fixedUnique[changed] = commit.Message
-				}
-			}
+			setUnique(diff.Changed, commit.Message, fixedUnique)
 			fallthrough
 		default:
-			for _, added := range diff.Added {
-				if existing, ok := addedUnique[added]; ok {
-					addedUnique[added] = existing + ", " + commit.Message
-				} else {
-					addedUnique[added] = commit.Message
-				}
-			}
+			setUnique(diff.Added, commit.Message, addedUnique)
 			if ccType != conventionalCommitFix {
-				for _, changed := range diff.Changed {
-					if existing, ok := changedUnique[changed]; ok {
-						changedUnique[changed] = existing + ", " + commit.Message
-					} else {
-						changedUnique[changed] = commit.Message
-					}
-				}
+				setUnique(diff.Changed, commit.Message, changedUnique)
 			}
-			for _, removed := range diff.Removed {
-				if existing, ok := removedUnique[removed]; ok {
-					removedUnique[removed] = existing + ", " + commit.Message
-				} else {
-					removedUnique[removed] = commit.Message
-				}
-			}
+			setUnique(diff.Removed, commit.Message, removedUnique)
 		}
 	}
 
-	return increment, fixedUnique, addedUnique, changedUnique, removedUnique, nil
+	return increment, fixedUnique, addedUnique, changedUnique, removedUnique
+}
+
+func setUnique(entries []string, message string, uniqueMap map[string]string) {
+	for _, entry := range entries {
+		if existing, ok := uniqueMap[entry]; ok {
+			uniqueMap[entry] = existing + ", " + message
+		} else {
+			uniqueMap[entry] = message
+		}
+	}
 }

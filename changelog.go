@@ -10,6 +10,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 )
 
@@ -27,165 +28,257 @@ const (
 	linePrefix    = "- "
 )
 
-func parseChangelog(changelogFile string) (changelog []byte, unreleased *change, increment *string, released []*change, err error) {
-	sLogger.Infof("reading the changelog file %s for parsing", changelogFile)
+type changelogParser struct {
+	CurrentNode ast.Node
+	Changelog   []byte
+	Unreleased  *change
+	Increment   *string
+	Released    []*change
 
-	released = make([]*change, 0)
+	currentChange            *change
+	unreleasedRegex          *regexp.Regexp
+	unreleasedIncrementRegex *regexp.Regexp
+	releasedRegex            *regexp.Regexp
+	versionRegex             *regexp.Regexp
 
-	changelog, err = readChangelogFile(changelogFile)
-	if err != nil {
-		return
-	}
+	currentDeformattedText string
+	currentText            string
+	prefix                 string
 
-	defer func() {
-		if recover() != nil {
-			unreleased = nil
-			increment = nil
-		}
-	}()
+	currentChangeType changeType
+}
 
+func buildChangelogParser(currentNode ast.Node, changelog []byte) (*changelogParser, error) {
 	unreleasedRegex, unreleasedIncrementRegex, releasedRegex, versionRegex, err := parsingRegexes()
 	if err != nil {
-		return
+		return nil, err
+	}
+
+	parser := changelogParser{
+		CurrentNode: currentNode,
+		Changelog:   changelog,
+		Released:    make([]*change, 0),
+
+		unreleasedRegex:          unreleasedRegex,
+		unreleasedIncrementRegex: unreleasedIncrementRegex,
+		releasedRegex:            releasedRegex,
+		versionRegex:             versionRegex,
+	}
+
+	return &parser, nil
+}
+
+func (p *changelogParser) resetLoop() {
+	p.currentDeformattedText = ""
+	p.currentText = ""
+	p.prefix = ""
+	p.CurrentNode = p.CurrentNode.NextSibling()
+}
+
+func (p *changelogParser) getDeformattedText() string {
+	if p.currentDeformattedText == "" {
+		p.currentDeformattedText = strings.ReplaceAll(strings.TrimSpace(strings.ToLower(string(p.CurrentNode.Text(p.Changelog)))), " ", "")
+	}
+
+	return p.currentDeformattedText
+}
+
+func (p *changelogParser) getCurrentText() *string {
+	if p.currentText == "" {
+		p.currentText = string(p.CurrentNode.Text(p.Changelog))
+	}
+
+	return &p.currentText
+}
+
+func (p *changelogParser) checkUnreleased() error {
+	if p.unreleasedRegex.MatchString(p.getDeformattedText()) {
+		if p.Unreleased != nil {
+			return fmt.Errorf("duplicate pending unreleased changes found")
+		}
+
+		p.Unreleased = &change{
+			Version:     nil,
+			VersionText: p.getCurrentText(),
+		}
+		p.currentChange = p.Unreleased
+	}
+
+	return nil
+}
+
+func (p *changelogParser) checkUnreleasedIncrement() error {
+	if p.unreleasedIncrementRegex.MatchString(p.getDeformattedText()) {
+		if p.Unreleased != nil {
+			return fmt.Errorf("duplicate pending unreleased changes found")
+		}
+
+		unreleasedIncrement := strings.SplitN(p.getDeformattedText(), "-", 2)
+		upperIncrement := strings.ToUpper(unreleasedIncrement[1])
+		p.Increment = &upperIncrement
+
+		p.Unreleased = &change{
+			Version:     nil,
+			VersionText: p.getCurrentText(),
+		}
+		p.currentChange = p.Unreleased
+	}
+
+	return nil
+}
+
+func (p *changelogParser) checkReleased() {
+	if p.releasedRegex.MatchString(p.getDeformattedText()) {
+		p.currentChange = nil
+		p.currentChangeType = ""
+		extractedVersion := p.versionRegex.FindAllString(*p.getCurrentText(), -1)
+		if len(extractedVersion) > 0 {
+			cleanVersion := strings.ReplaceAll(strings.ReplaceAll(extractedVersion[0], "[", ""), "]", "")
+			version, parseError := semver.Parse(cleanVersion)
+			if parseError != nil {
+				sLogger.Warn("failed to parse changelog node text as version")
+				sLogger.Warn(p.getDeformattedText())
+				sLogger.Warn(parseError.Error())
+			} else {
+				releasedChange := &change{
+					Version:     &version,
+					VersionText: p.getCurrentText(),
+				}
+				p.prefix = releasePrefix
+				p.currentChange = releasedChange
+				p.Released = append(p.Released, releasedChange)
+			}
+		}
+	}
+}
+
+func (p *changelogParser) processChange() {
+	childText := loopChildren(p.CurrentNode, p.Changelog)
+
+	switch p.getDeformattedText() {
+	case strings.ToLower(string(changeAdded)):
+		p.currentChangeType = changeAdded
+		p.prefix = changePrefix
+	case strings.ToLower(string(changeChanged)):
+		p.currentChangeType = changeChanged
+		p.prefix = changePrefix
+	case strings.ToLower(string(changeDeprecated)):
+		p.currentChangeType = changeDeprecated
+		p.prefix = changePrefix
+	case strings.ToLower(string(changeRemoved)):
+		p.currentChangeType = changeRemoved
+		p.prefix = changePrefix
+	case strings.ToLower(string(changeFixed)):
+		p.currentChangeType = changeFixed
+		p.prefix = changePrefix
+	case strings.ToLower(string(changeSecurity)):
+		p.currentChangeType = changeSecurity
+		p.prefix = changePrefix
+	default:
+		if p.currentChangeType != "" && p.prefix != changePrefix {
+			p.processChangeEntries(childText)
+		}
+	}
+
+	if p.prefix != "" {
+		p.buildChangeText(childText)
+	}
+}
+
+func (p *changelogParser) processChangeEntries(childText []string) {
+	switch p.currentChangeType {
+	case changeAdded:
+		p.currentChange.Added = append(p.currentChange.Added, childText...)
+		p.prefix = linePrefix
+	case changeChanged:
+		p.currentChange.Changed = append(p.currentChange.Changed, childText...)
+		p.prefix = linePrefix
+	case changeDeprecated:
+		p.currentChange.Deprecated = append(p.currentChange.Deprecated, childText...)
+		p.prefix = linePrefix
+	case changeRemoved:
+		p.currentChange.Removed = append(p.currentChange.Removed, childText...)
+		p.prefix = linePrefix
+	case changeFixed:
+		p.currentChange.Fixed = append(p.currentChange.Fixed, childText...)
+		p.prefix = linePrefix
+	case changeSecurity:
+		p.currentChange.Security = append(p.currentChange.Security, childText...)
+		p.prefix = linePrefix
+	}
+}
+
+func (p *changelogParser) buildChangeText(childText []string) {
+	fullText := p.prefix + *p.getCurrentText()
+	if p.prefix == linePrefix {
+		sb := strings.Builder{}
+		for _, cText := range childText {
+			sb.WriteString(p.prefix)
+			sb.WriteString(cText)
+			sb.WriteString("\n")
+		}
+		fullText = sb.String()
+		fullText = fullText[:len(fullText)-1]
+	}
+
+	if p.currentChange.Text != nil {
+		fullText = *p.currentChange.Text + "\n" + fullText
+	}
+	p.currentChange.Text = &fullText
+}
+
+func parseChangelog(changelogFile string) ([]byte, *change, *string, []*change, error) {
+	sLogger.Infof("reading the changelog file %s for parsing", changelogFile)
+
+	changelog, err := readChangelogFile(changelogFile)
+	if err != nil {
+		return nil, nil, nil, nil, err
 	}
 
 	changelogNode := goldmark.DefaultParser().Parse(text.NewReader(changelog))
 
-	current := changelogNode.FirstChild()
-	var currentChange *change
-	var currentChangeType changeType
-	currentChangeType = ""
+	clogParser, err := loopNodes(changelogNode.FirstChild(), changelog)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return clogParser.Changelog, clogParser.Unreleased, clogParser.Increment, clogParser.Released, nil
+}
+
+func loopNodes(currentNode ast.Node, changelog []byte) (*changelogParser, error) {
+	clogParser, err := buildChangelogParser(currentNode, changelog)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if recover() != nil {
+			clogParser.Unreleased = nil
+			clogParser.Increment = nil
+		}
+	}()
+
 	for {
-		if current == nil {
+		if clogParser.CurrentNode == nil {
 			break
 		}
 
-		currentText := strings.ReplaceAll(strings.TrimSpace(strings.ToLower(string(current.Text(changelog)))), " ", "")
-		prefix := ""
-
-		if unreleasedRegex.MatchString(currentText) {
-			if unreleased != nil {
-				err = fmt.Errorf("duplicate pending unreleased changes found")
-				break
-			}
-
-			unreleased = &change{
-				Version:     nil,
-				VersionText: nodeText(current, changelog),
-			}
-			currentChange = unreleased
+		if err := clogParser.checkUnreleased(); err != nil {
+			return nil, err
 		}
-		if unreleasedIncrementRegex.MatchString(currentText) {
-			if unreleased != nil {
-				err = fmt.Errorf("duplicate pending unreleased changes found")
-				break
-			}
-
-			unreleasedIncrement := strings.SplitN(currentText, "-", 2)
-			upperIncrement := strings.ToUpper(unreleasedIncrement[1])
-			increment = &upperIncrement
-
-			unreleased = &change{
-				Version:     nil,
-				VersionText: nodeText(current, changelog),
-			}
-			currentChange = unreleased
+		if err := clogParser.checkUnreleasedIncrement(); err != nil {
+			return nil, err
 		}
-		if releasedRegex.MatchString(currentText) {
-			currentChange = nil
-			currentChangeType = ""
-			extractedVersion := versionRegex.FindAllString(string(current.Text(changelog)), -1)
-			if len(extractedVersion) > 0 {
-				cleanVersion := strings.ReplaceAll(strings.ReplaceAll(extractedVersion[0], "[", ""), "]", "")
-				version, parseError := semver.Parse(cleanVersion)
-				if parseError != nil {
-					sLogger.Warn("failed to parse changelog node text as version")
-					sLogger.Warn(currentText)
-					sLogger.Warn(parseError.Error())
-				} else {
-					releasedChange := &change{
-						Version:     &version,
-						VersionText: nodeText(current, changelog),
-					}
-					prefix = releasePrefix
-					currentChange = releasedChange
-					released = append(released, releasedChange)
-				}
-			}
+		clogParser.checkReleased()
+
+		if clogParser.currentChange != nil {
+			clogParser.processChange()
 		}
 
-		if currentChange != nil {
-			text := *nodeText(current, changelog)
-			childText := loopChildren(current, changelog)
-
-			switch currentText {
-			case strings.ToLower(string(changeAdded)):
-				currentChangeType = changeAdded
-				prefix = changePrefix
-			case strings.ToLower(string(changeChanged)):
-				currentChangeType = changeChanged
-				prefix = changePrefix
-			case strings.ToLower(string(changeDeprecated)):
-				currentChangeType = changeDeprecated
-				prefix = changePrefix
-			case strings.ToLower(string(changeRemoved)):
-				currentChangeType = changeRemoved
-				prefix = changePrefix
-			case strings.ToLower(string(changeFixed)):
-				currentChangeType = changeFixed
-				prefix = changePrefix
-			case strings.ToLower(string(changeSecurity)):
-				currentChangeType = changeSecurity
-				prefix = changePrefix
-			default:
-				if currentChangeType != "" && prefix != changePrefix {
-					switch currentChangeType {
-					case changeAdded:
-						currentChange.Added = append(currentChange.Added, childText...)
-						prefix = linePrefix
-					case changeChanged:
-						currentChange.Changed = append(currentChange.Changed, childText...)
-						prefix = linePrefix
-					case changeDeprecated:
-						currentChange.Deprecated = append(currentChange.Deprecated, childText...)
-						prefix = linePrefix
-					case changeRemoved:
-						currentChange.Removed = append(currentChange.Removed, childText...)
-						prefix = linePrefix
-					case changeFixed:
-						currentChange.Fixed = append(currentChange.Fixed, childText...)
-						prefix = linePrefix
-					case changeSecurity:
-						currentChange.Security = append(currentChange.Security, childText...)
-						prefix = linePrefix
-					}
-				}
-			}
-
-			if prefix != "" {
-				fullText := prefix + text
-				if prefix == linePrefix {
-					sb := strings.Builder{}
-					for _, cText := range childText {
-						sb.WriteString(prefix)
-						sb.WriteString(cText)
-						sb.WriteString("\n")
-					}
-					fullText = sb.String()
-					fullText = fullText[:len(fullText)-1]
-				}
-
-				if currentChange.Text != nil {
-					fullText = *currentChange.Text + "\n" + fullText
-				}
-				currentChange.Text = &fullText
-			}
-		}
-
-		current = current.NextSibling()
+		clogParser.resetLoop()
 	}
 
-	return
+	return clogParser, nil
 }
 
 func readChangelogFile(changelogFile string) ([]byte, error) {
