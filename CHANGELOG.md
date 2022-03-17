@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2022-03-17
+### Added
+- conventional_commits.go; refactor: reduce cyclomatic complexity (#6)
+- go.mod; refactor: reduce cyclomatic complexity (#6)
+- options.go; refactor: reduce cyclomatic complexity (#6)
+- models.go; refactor: reduce cyclomatic complexity (#6)
+- go.sum; refactor: reduce cyclomatic complexity (#6)
+- README.md; refactor: reduce cyclomatic complexity (#6)
+- git.go; refactor: reduce cyclomatic complexity (#6)
+- utils.go; refactor: reduce cyclomatic complexity (#6)
+- version.go; refactor: reduce cyclomatic complexity (#6)
+- logger.go; refactor: reduce cyclomatic complexity (#6)
+- .github/actions/build-changehelper/action.yml; refactor: reduce cyclomatic complexity (#6)
+- cmd.go; refactor: reduce cyclomatic complexity (#6)
+- operations.go; refactor: reduce cyclomatic complexity (#6)
+- .github/workflows/go.yml; refactor: reduce cyclomatic complexity (#6)
+- main.go; refactor: reduce cyclomatic complexity (#6)
+- .gitignore; refactor: reduce cyclomatic complexity (#6)
+- semver.go; refactor: reduce cyclomatic complexity (#6)
+- LICENSE; refactor: reduce cyclomatic complexity (#6)
+- changelog.go; refactor: reduce cyclomatic complexity (#6)
+
 ## [1.1.1] - 2022-03-17
 ### Added
 - utils.go; fix: update readme and cleanup options
