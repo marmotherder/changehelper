@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2022-03-17
+### Added
+- utils.go; fix: update readme and cleanup options
+- version.go; fix: update readme and cleanup options
+- .github/actions/build-changehelper/action.yml; fix: update readme and cleanup options
+- cmd.go; fix: update readme and cleanup options
+- changelog.go; fix: update readme and cleanup options
+- go.mod; fix: update readme and cleanup options
+- operations.go; fix: update readme and cleanup options
+- semver.go; fix: update readme and cleanup options
+- .github/workflows/go.yml; fix: update readme and cleanup options
+- README.md; fix: update readme and cleanup options
+- go.sum; fix: update readme and cleanup options
+- options.go; fix: update readme and cleanup options
+- git.go; fix: update readme and cleanup options
+- conventional_commits.go; fix: update readme and cleanup options
+- main.go; fix: update readme and cleanup options
+- models.go; fix: update readme and cleanup options
+- .gitignore; fix: update readme and cleanup options
+- logger.go; fix: update readme and cleanup options
+- LICENSE; fix: update readme and cleanup options
+
 ## [1.1.0] - 2022-03-15
 ### Added
 - main.go; feat: add enforcement options for conventional commits
