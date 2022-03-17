@@ -78,7 +78,7 @@ type ReleaseOptions struct {
 	VersionPrefix    string   `short:"v" long:"version-prefix" description:"Prefix for the version" default:"v"`
 }
 
-// EnforceConventionalCommitsOption sare the options used by the enforce conventional commits operation
+// EnforceConventionalCommitsOptions sare the options used by the enforce conventional commits operation
 type EnforceConventionalCommitsOptions struct {
 	GlobalOptions
 	GeneralGitOptions
