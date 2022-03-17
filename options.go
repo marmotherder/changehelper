@@ -42,10 +42,11 @@ type NewVersionOptions struct {
 	IgnoreConventionalCommits bool     `short:"g" long:"ignore-conventionalcommits" description:"Should conventional commits be ignored?"`
 	Added                     []string `short:"a" long:"added" description:"What was added in this new release?"`
 	Changed                   []string `short:"c" long:"changed" description:"What was changed in this new release?"`
-	Deprecated                []string `short:"d" long:"deprecated" description:"What was deprecated in this new release?"`
+	Deprecated                []string `short:"t" long:"deprecated" description:"What was deprecated in this new release?"`
 	Removed                   []string `short:"r" long:"removed" description:"What was removed in this new release?"`
 	Fixed                     []string `short:"x" long:"fixed" description:"What was fixed in this new release?"`
 	Security                  []string `short:"e" long:"security" description:"What was security related in this new release?"`
+	Depth                     int      `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
 }
 
 type GitLookupOptions struct {
@@ -59,6 +60,7 @@ type UpdateOptions struct {
 	GlobalOptions
 	GitLookupOptions
 	GitBranch string `short:"b" long:"git-branch" description:"Git branch to run against"`
+	Depth     int    `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
 }
 
 type ReleaseOptions struct {
@@ -73,7 +75,6 @@ type ReleaseOptions struct {
 type EnforceConventionalCommitsOptions struct {
 	GlobalOptions
 	GeneralGitOptions
-	Depth                       int  `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"1"`
-	UseLastChangelogChange      bool `short:"u" long:"use-changelog" description:"Automatically determine the depth by finding the last time changelog changed in the tree, and comparing from there. If set, will override depth option"`
+	Depth                       int  `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
 	AllowNonConventionalcommits bool `short:"a" long:"allow" description:"Allows non conventional commits to be present. Will pass if at least one conventional commits is found"`
 }
