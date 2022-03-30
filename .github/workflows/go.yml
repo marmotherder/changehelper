@@ -51,7 +51,6 @@ jobs:
       shell: bash
 
     - uses: actions/upload-artifact@v2
-      if: startsWith(github.ref, 'refs/heads/main')
       with:
         name: changehelper_linux_amd64_binary
         path: changehelper
