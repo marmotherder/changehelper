@@ -48,7 +48,7 @@ func newVersion() {
 		}
 	}
 
-	unreleasedVersionText := "[Unreleased]"
+	unreleasedVersionText := releasePrefix + "[Unreleased]"
 	newChange := change{
 		VersionText: &unreleasedVersionText,
 	}
@@ -343,6 +343,51 @@ func printUnreleasedChanges(changelogFile string) {
 
 	fmt.Print(*unreleasedText)
 	os.Exit(0)
+}
+
+func printChanges() {
+	var options PrintChangesOptions
+	parseOptions(&options)
+
+	ver, err := semver.ParseTolerant(options.Version)
+	if err != nil {
+		sLogger.Errorf("could not parse the input version %s", options.Version)
+		sLogger.Fatal(err.Error())
+	}
+
+	_, _, _, released, err := parseChangelog(options.ChangelogFile)
+	if err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	filteredReleases := []*change{}
+
+	switch strings.Count(options.Version, ".") {
+	case 0:
+		for _, release := range released {
+			if release.Version.Major == ver.Major {
+				filteredReleases = append(filteredReleases, release)
+			}
+		}
+	case 1:
+		for _, release := range released {
+			if release.Version.Major == ver.Major && release.Version.Minor == ver.Minor {
+				filteredReleases = append(filteredReleases, release)
+			}
+		}
+	default:
+		for _, release := range released {
+			if release.Version.Major == ver.Major && release.Version.Minor == ver.Minor && release.Version.Patch == ver.Patch {
+				filteredReleases = append(filteredReleases, release)
+			}
+		}
+	}
+
+	for _, release := range filteredReleases {
+		fmt.Println(*release.VersionText)
+		fmt.Println(*release.Text)
+		fmt.Print("\n")
+	}
 }
 
 func release() {
