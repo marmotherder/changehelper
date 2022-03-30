@@ -138,7 +138,7 @@ func getCurrent(changelogFile string) (*string, *semver.Version, error) {
 		return nil, nil, errors.New("no releases found in changelog file")
 	}
 
-	text := "## " + *latest.VersionText + "\n" + *latest.Text
+	text := *latest.VersionText + "\n" + *latest.Text
 
 	return &text, latest.Version, nil
 }
@@ -169,7 +169,7 @@ func getUnreleased(changelogFile string) (*string, *semver.Version, error) {
 
 	unreleased.renderChangeText(*increment)
 
-	text := "## " + *unreleased.VersionText + "\n" + *unreleased.Text
+	text := *unreleased.VersionText + "\n" + *unreleased.Text
 
 	return &text, unreleased.Version, nil
 }
