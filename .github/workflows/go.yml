@@ -44,8 +44,12 @@ jobs:
         SSH_KEY: ${{ secrets.SSH_KEY }}
       shell: bash
       
-    - name: Git fetch
-      run: git fetch
+    - name: Git pull
+      run: git pull
+      shell: bash
+      
+    - name: Git log
+      run: git log
       shell: bash
 
     - name: Set version
@@ -53,7 +57,6 @@ jobs:
         chmod 755 ./changehelper && ./changehelper update -t -llll
         CURRENT_VERSION=$(./changehelper print-current-version)
         sed -i "s,0.0.0,$CURRENT_VERSION,g" version.go
-      if: startsWith(github.ref, 'refs/heads/main')
       shell: bash
 
     - name: Capture version
