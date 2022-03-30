@@ -13,8 +13,10 @@ Support has been added for [conventional commits](https://www.conventionalcommit
 
 The command line has five core commands outlined here:
 * `new-version` - Interactive prompt to generate a new release, which will be loaded into a changelog file
-* `print-current` - Prints the current version as detected in the changelog file
-* `print-unreleased` - Prints the unreleased version as specified in the changelog file. If no unreleased change is defined, it will exit with code 1
+* `print-current-version` - Prints the current version as detected in the changelog file
+* `print-unreleased-version` - Prints the unreleased version as specified in the changelog file. If no unreleased change is defined, it will exit with code 1
+* `print-current-change` - Prints the current change text as detected in the changelog file
+* `print-unreleased-change` - Prints the unreleased change text as specified in the changelog file. If no unreleased change is defined, it will exit with code 1
 * `update` - Will update the changelog file with a release version. This is either done from an unreleased version present in the file already, or, it will generate a version based on conventional commits
 * `release` - Will release the changes in the changelog (and any other files added externally) to git, pushing the changes to the specified trunk branch, and generating/updating release branches/tags as appropriate for the release
 * `update-and-release` - Runs both version and release as a single command one after the other
@@ -68,19 +70,27 @@ By default, the tool is interactive, however, the parsing and creation of a new 
 * -d --depth                How deep to check down the git tree when looking for conventional commits. If set, it will override the default behaviour, which is reading all commits after the last change to the changelog file
 ```
 
-### **print-current**
+### **print-current-version**
 
-print-current has no additional options, and will simply print the current version in the changelog. In the event of an unreleased version being present, it will print the most recent released version.
+print-current-version has no additional options, and will simply print the current version in the changelog. In the event of an unreleased version being present, it will print the most recent released version.
 
-### **print-unreleased**
+### **print-unreleased-version**
 
-print-unreleased will check the changelog file to validate if an unreleased version is present.
+print-unreleased-version will check the changelog file to validate if an unreleased version is present.
 
 If an unreleased version is not present, it will always exit with code 1.
 
 If an unreleased version is present, it will scan through the changelog file, and print the expected next version when released, based on the rules/setup in the changlog file. For example, if the current version in `./CHANGELOG.md` is `1.0.0`, and there is an unreleased version with the change level as `PATCH`, this will print version `1.0.1`.
 
 The command can, optionally, evaluate versions against git release branches, in which both the changelog file, and the git release branches will inform the next version. For example, the version in `./CHANGELOG.md` is `1.0.0`, there is a branch in git as `release/1.0.1`, and there is an unreleased version with the change level as `PATCH`, then this will print `1.0.2`.
+
+### **print-current-change**
+
+print-current-change has no additional options, and will simply print the current change text in the changelog. In the event of an unreleased version being present, it will print the most recent released version.
+
+### **print-unreleased-change**
+
+print-unreleased-change will check the changelog file to validate if an unreleased version is present. If it is, it will print the text for that unreleased version
 
 ### **update**
 
