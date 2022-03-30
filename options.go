@@ -52,6 +52,11 @@ type NewVersionOptions struct {
 	Depth                     int      `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
 }
 
+type PrintChangesOptions struct {
+	GlobalOptions
+	Version string `short:"v" long:"version" description:"A version string to use to lookup changes"`
+}
+
 // GitLookupOptions are generral the options used operations running git lookup commands
 type GitLookupOptions struct {
 	GitEvaluate         bool   `short:"e" long:"git-evaluate" description:"Should git branches be evaluated when calcuating the most recent version?"`
