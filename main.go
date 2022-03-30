@@ -16,6 +16,7 @@ print-current-version			Print the current version in the changelog file
 print-unreleased-version		Print the unreleased version based on the changelog file, or conventional commit(s)
 print-current-changes			Print the most recent changes recorded in changelog that have been released
 print-unreleased-changes		Print the most recent unreleased changes recorded in changelog
+print-changes				Print any changes matching the input version
 update					Update the version in the changelog file
 release					Commit and push changes to git, ie changes to the changelog, and branches
 update-and-release			Run update, followed by release in order
@@ -64,6 +65,8 @@ func main() {
 		printCurrentChanges(options.ChangelogFile)
 	case "print-unreleased-changes":
 		printUnreleasedChanges(options.ChangelogFile)
+	case "print-changes":
+		printChanges()
 	case "update":
 		update()
 	case "update-and-release":
