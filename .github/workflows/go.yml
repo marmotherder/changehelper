@@ -49,7 +49,7 @@ jobs:
       shell: bash
       
     - name: Git checkout
-      run: git reset --hard ${{ github.ref }}
+      run: git checkout ${{ github.ref }} && git pull
       shell: bash
       
     - name: Git log
