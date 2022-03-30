@@ -235,7 +235,7 @@ func (git gitCli) getLastModifiedCommit(path string) (*string, error) {
 	if code != 0 {
 		return nil, nonZeroCode("log")
 	}
-	sLogger.Infof("latest commit for %s is %s", path, stdOut)
+	sLogger.Infof("latest commit for %s is %s", path, *stdOut)
 
 	return stdOut, nil
 }
