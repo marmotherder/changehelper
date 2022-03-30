@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2022-03-30
+### Added
+- README.md; feat: allow release note automation (#7)
+- utils.go; feat: allow release note automation (#7)
+- LICENSE; feat: allow release note automation (#7)
+- .github/actions/build-changehelper/action.yml; feat: allow release note automation (#7)
+- go.sum; feat: allow release note automation (#7)
+- cmd.go; feat: allow release note automation (#7)
+- logger.go; feat: allow release note automation (#7)
+- options.go; feat: allow release note automation (#7)
+- main.go; feat: allow release note automation (#7)
+- changelog.go; feat: allow release note automation (#7)
+- semver.go; feat: allow release note automation (#7)
+- conventional_commits.go; feat: allow release note automation (#7)
+- models.go; feat: allow release note automation (#7)
+- operations.go; feat: allow release note automation (#7)
+- version.go; feat: allow release note automation (#7)
+- git.go; feat: allow release note automation (#7)
+- .github/workflows/go.yml; feat: allow release note automation (#7)
+- .gitignore; feat: allow release note automation (#7)
+- go.mod; feat: allow release note automation (#7)
+
 ## [1.1.3] - 2022-03-17
 ### Added
 - operations.go; docs: fix comment schemes
