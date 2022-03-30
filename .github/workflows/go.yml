@@ -44,8 +44,12 @@ jobs:
         SSH_KEY: ${{ secrets.SSH_KEY }}
       shell: bash
       
-    - name: Git pull
-      run: git pull
+    - name: Git fetch
+      run: git fetch
+      shell: bash
+      
+    - name: Git checkout
+      run: git checkout ${{ github.ref }}
       shell: bash
       
     - name: Git log
