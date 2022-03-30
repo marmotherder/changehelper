@@ -97,7 +97,7 @@ func (p *changelogParser) checkUnreleased() error {
 			return fmt.Errorf("duplicate pending unreleased changes found")
 		}
 
-		versionText := *p.getCurrentText()
+		versionText := releasePrefix + *p.getCurrentText()
 		p.Unreleased = &change{
 			Version:     nil,
 			VersionText: &versionText,
@@ -118,7 +118,7 @@ func (p *changelogParser) checkUnreleasedIncrement() error {
 		upperIncrement := strings.ToUpper(unreleasedIncrement[1])
 		p.Increment = &upperIncrement
 
-		versionText := *p.getCurrentText()
+		versionText := releasePrefix + *p.getCurrentText()
 		p.Unreleased = &change{
 			Version:     nil,
 			VersionText: &versionText,
@@ -143,7 +143,7 @@ func (p *changelogParser) checkReleased() bool {
 				sLogger.Warn(parseError.Error())
 			} else {
 
-				versionText := *p.getCurrentText()
+				versionText := releasePrefix + *p.getCurrentText()
 				releasedChange := &change{
 					Version:     &version,
 					VersionText: &versionText,
@@ -347,7 +347,7 @@ func writeToChangelogFile(file string, unreleased *change, released []*change, u
 	sLogger.Debug(sb.String())
 
 	for _, release := range released {
-		sb.WriteString("\n## ")
+		sb.WriteString("\n")
 		sb.WriteString(*release.VersionText)
 		sb.WriteString("\n")
 		sb.WriteString(*release.Text)
