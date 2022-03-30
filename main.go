@@ -12,8 +12,10 @@ const operationsText = `Usage = changehelper [global options] <operation>
 Operations:
 
 new-version				Create a new in progress version interactively
-print-current				Print the current version in the changelog file
-print-unreleased			Print the unreleased version based on the changelog file, or conventional commit(s)
+print-current-version			Print the current version in the changelog file
+print-unreleased-version		Print the unreleased version based on the changelog file, or conventional commit(s)
+print-current-changes			Print the most recent changes recorded in changelog that have been released
+print-unreleased-changes		Print the most recent unreleased changes recorded in changelog
 update					Update the version in the changelog file
 release					Commit and push changes to git, ie changes to the changelog, and branches
 update-and-release			Run update, followed by release in order
@@ -54,10 +56,14 @@ func main() {
 		enforceConventionalCommits()
 	case "new-version":
 		newVersion()
-	case "print-current":
-		printCurrent(options.ChangelogFile)
-	case "print-unreleased":
-		printUnreleased(options.ChangelogFile)
+	case "print-current-version":
+		printCurrentVersion(options.ChangelogFile)
+	case "print-unreleased-version":
+		printUnreleasedVersion(options.ChangelogFile)
+	case "print-current-changes":
+		printCurrentChanges(options.ChangelogFile)
+	case "print-unreleased-changes":
+		printUnreleasedChanges(options.ChangelogFile)
 	case "update":
 		update()
 	case "update-and-release":

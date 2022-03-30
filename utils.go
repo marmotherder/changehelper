@@ -126,33 +126,35 @@ func resolvePathToRelativePath(path, relative string) (*string, error) {
 	return &relativePath, nil
 }
 
-func getCurrentVersion(changelogFile string) (*semver.Version, error) {
+func getCurrent(changelogFile string) (*string, *semver.Version, error) {
 	_, _, _, released, err := parseChangelog(changelogFile)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	latest := getLatestRelease(released)
 
-	if latest != nil && latest.Version != nil {
-		return latest.Version, nil
+	if latest == nil || latest.Version == nil {
+		return nil, nil, errors.New("no releases found in changelog file")
 	}
 
-	return nil, errors.New("no releases found in changelog file")
+	text := "## " + *latest.VersionText + "\n" + *latest.Text
+
+	return &text, latest.Version, nil
 }
 
-func getUnreleasedVersion(changelogFile string) (*semver.Version, error) {
+func getUnreleased(changelogFile string) (*string, *semver.Version, error) {
 	_, unreleased, increment, released, err := parseChangelog(changelogFile)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if unreleased == nil {
-		return nil, errors.New("an unreleased change couldn't be found")
+		return nil, nil, errors.New("an unreleased change couldn't be found")
 	}
 
 	if increment == nil {
-		return nil, errors.New("the unreleased change has no increment set, so version cannot be determined")
+		return nil, nil, errors.New("the unreleased change has no increment set, so version cannot be determined")
 	}
 
 	if len(released) > 0 {
@@ -165,7 +167,11 @@ func getUnreleasedVersion(changelogFile string) (*semver.Version, error) {
 
 	updateUnreleasedVersion(unreleased, increment)
 
-	return unreleased.Version, nil
+	unreleased.renderChangeText(*increment)
+
+	text := "## " + *unreleased.VersionText + "\n" + *unreleased.Text
+
+	return &text, unreleased.Version, nil
 }
 
 func getRemote(git gitCli) string {

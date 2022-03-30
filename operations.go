@@ -305,8 +305,8 @@ func loadConventionalCommitsToChange(
 	return increment, nil
 }
 
-func printCurrent(changelogFile string) {
-	current, err := getCurrentVersion(changelogFile)
+func printCurrentVersion(changelogFile string) {
+	_, current, err := getCurrent(changelogFile)
 	if err != nil {
 		sLogger.Fatal(err.Error())
 	}
@@ -315,13 +315,33 @@ func printCurrent(changelogFile string) {
 	os.Exit(0)
 }
 
-func printUnreleased(changelogFile string) {
-	unreleasedVersion, err := getUnreleasedVersion(changelogFile)
+func printUnreleasedVersion(changelogFile string) {
+	_, unreleasedVersion, err := getUnreleased(changelogFile)
 	if err != nil {
 		sLogger.Fatal(err.Error())
 	}
 
 	fmt.Print(unreleasedVersion.String())
+	os.Exit(0)
+}
+
+func printCurrentChanges(changelogFile string) {
+	currentText, _, err := getCurrent(changelogFile)
+	if err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	fmt.Print(*currentText)
+	os.Exit(0)
+}
+
+func printUnreleasedChanges(changelogFile string) {
+	unreleasedText, _, err := getUnreleased(changelogFile)
+	if err != nil {
+		sLogger.Fatal(err.Error())
+	}
+
+	fmt.Print(*unreleasedText)
 	os.Exit(0)
 }
 
@@ -354,7 +374,7 @@ func release() {
 		sLogger.Fatal(err.Error())
 	}
 
-	version, err := getCurrentVersion(options.ChangelogFile)
+	_, version, err := getCurrent(options.ChangelogFile)
 	if err != nil {
 		sLogger.Fatal(err.Error())
 	}
