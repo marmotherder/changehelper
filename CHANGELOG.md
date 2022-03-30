@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2022-03-30
+### Added
+- go.sum; fix: more consistent string setup for versions
+- git.go; fix: more consistent string setup for versions
+- conventional_commits.go; fix: more consistent string setup for versions
+- README.md; fix: more consistent string setup for versions
+- .github/workflows/go.yml; fix: more consistent string setup for versions
+- changelog.go; fix: more consistent string setup for versions
+- utils.go; fix: more consistent string setup for versions
+- version.go; fix: more consistent string setup for versions
+- models.go; fix: more consistent string setup for versions
+- operations.go; fix: more consistent string setup for versions
+- main.go; fix: more consistent string setup for versions
+- go.mod; fix: more consistent string setup for versions
+- options.go; fix: more consistent string setup for versions
+- .gitignore; fix: more consistent string setup for versions
+- .github/actions/build-changehelper/action.yml; fix: more consistent string setup for versions
+- cmd.go; fix: more consistent string setup for versions
+- logger.go; fix: more consistent string setup for versions
+- semver.go; fix: more consistent string setup for versions
+- LICENSE; fix: more consistent string setup for versions
+
 ## [1.2.1] - 2022-03-30
 ### Added
 - LICENSE; ci: fix artifact for releases
