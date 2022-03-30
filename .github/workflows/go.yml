@@ -26,7 +26,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.17.8
+        go-version: 1.18
 
     - name: Build Current
       run: go build
@@ -37,7 +37,7 @@ jobs:
     - name: Set version
       run: |
         chmod 755 ./changehelper && ./changehelper update -t -llll
-        CURRENT_VERSION=$(./changehelper print-current)
+        CURRENT_VERSION=$(./changehelper print-current-version)
         sed -i "s,0.0.0,$CURRENT_VERSION,g" version.go
       if: startsWith(github.ref, 'refs/heads/main')
       shell: bash
@@ -45,7 +45,7 @@ jobs:
     - name: Capture version
       run: |
         chmod 755 ./changehelper
-        CURRENT_VERSION=$(./changehelper print-current)
+        CURRENT_VERSION=$(./changehelper print-current-version)
         sed -i "s,0.0.0,$CURRENT_VERSION,g" version.go
       if: startsWith(github.ref, 'refs/tags')
       shell: bash
@@ -185,7 +185,17 @@ jobs:
       with:
         name: changehelper_darwin_amd64
 
+    - uses: actions/download-artifact@v2
+      with:
+        name: changehelper_linux_amd64_binary
+
+    - name: Capture release notes
+      run: |
+        chmod 744 ./changehelper
+        ./changehelper print-current-changes > ./RELEASE.txt
+
     - name: Release
       uses: softprops/action-gh-release@v0.1.14
       with:
+        body_path: ./RELEASE.txt
         files: '*.zip'
