@@ -33,6 +33,20 @@ jobs:
       env:
         CGO_ENABLED: 1
       shell: bash
+      
+    - name: Setup git credentials
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+
+        echo $SSH_KEY > ./id_rsa
+      env:
+        SSH_KEY: ${{ secrets.SSH_KEY }}
+      shell: bash
+      
+    - name: Git fetch
+      run: git fetch
+      shell: bash
 
     - name: Set version
       run: |
