@@ -97,9 +97,10 @@ func (p *changelogParser) checkUnreleased() error {
 			return fmt.Errorf("duplicate pending unreleased changes found")
 		}
 
+		versionText := *p.getCurrentText()
 		p.Unreleased = &change{
 			Version:     nil,
-			VersionText: p.getCurrentText(),
+			VersionText: &versionText,
 		}
 		p.currentChange = p.Unreleased
 	}
@@ -117,9 +118,10 @@ func (p *changelogParser) checkUnreleasedIncrement() error {
 		upperIncrement := strings.ToUpper(unreleasedIncrement[1])
 		p.Increment = &upperIncrement
 
+		versionText := *p.getCurrentText()
 		p.Unreleased = &change{
 			Version:     nil,
-			VersionText: p.getCurrentText(),
+			VersionText: &versionText,
 		}
 		p.currentChange = p.Unreleased
 	}
@@ -127,7 +129,7 @@ func (p *changelogParser) checkUnreleasedIncrement() error {
 	return nil
 }
 
-func (p *changelogParser) checkReleased() {
+func (p *changelogParser) checkReleased() bool {
 	if p.releasedRegex.MatchString(p.getDeformattedText()) {
 		p.currentChange = nil
 		p.currentChangeType = ""
@@ -140,16 +142,22 @@ func (p *changelogParser) checkReleased() {
 				sLogger.Warn(p.getDeformattedText())
 				sLogger.Warn(parseError.Error())
 			} else {
+
+				versionText := *p.getCurrentText()
 				releasedChange := &change{
 					Version:     &version,
-					VersionText: p.getCurrentText(),
+					VersionText: &versionText,
 				}
 				p.prefix = releasePrefix
 				p.currentChange = releasedChange
 				p.Released = append(p.Released, releasedChange)
+
+				return true
 			}
 		}
 	}
+
+	return false
 }
 
 func (p *changelogParser) processChange() {
@@ -269,7 +277,10 @@ func loopNodes(currentNode ast.Node, changelog []byte) (*changelogParser, error)
 		if err := clogParser.checkUnreleasedIncrement(); err != nil {
 			return nil, err
 		}
-		clogParser.checkReleased()
+		if clogParser.checkReleased() {
+			clogParser.resetLoop()
+			continue
+		}
 
 		if clogParser.currentChange != nil {
 			clogParser.processChange()
@@ -336,6 +347,8 @@ func writeToChangelogFile(file string, unreleased *change, released []*change, u
 	sLogger.Debug(sb.String())
 
 	for _, release := range released {
+		sb.WriteString("\n## ")
+		sb.WriteString(*release.VersionText)
 		sb.WriteString("\n")
 		sb.WriteString(*release.Text)
 		sb.WriteString("\n")
