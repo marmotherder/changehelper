@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2022-03-30
+### Added
+- LICENSE; ci: fix artifact for releases
+- changelog.go; ci: fix artifact for releases
+- README.md; ci: fix artifact for releases
+- models.go; ci: fix artifact for releases
+- go.mod; ci: fix artifact for releases
+- go.sum; ci: fix artifact for releases
+- logger.go; ci: fix artifact for releases
+- .github/actions/build-changehelper/action.yml; ci: fix artifact for releases
+- .github/workflows/go.yml; ci: fix artifact for releases
+- options.go; ci: fix artifact for releases
+- cmd.go; ci: fix artifact for releases
+- .gitignore; ci: fix artifact for releases
+- git.go; ci: fix artifact for releases
+- operations.go; ci: fix artifact for releases
+- main.go; ci: fix artifact for releases
+- utils.go; ci: fix artifact for releases
+- conventional_commits.go; ci: fix artifact for releases
+- version.go; ci: fix artifact for releases
+- semver.go; ci: fix artifact for releases
+
 ## [1.2.0] - 2022-03-30
 ### Added
 - README.md; feat: allow release note automation (#7)
