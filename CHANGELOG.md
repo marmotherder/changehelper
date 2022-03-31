@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2022-03-31
+### Changed
+- main.go; feat: add print-changes operation
+- operations.go; feat: add printChanges operation
+- options.go; feat: add options for change capture
+- .github/workflows/go.yml; ci: fetch whole git history, ci: fetch before update, ci: capture filtered releases
+### Fixed
+- git.go; fix: latest commit debugging string
+- changelog.go; fix: more consistent string setup for versions
+- utils.go; fix: consistent output strings
+
 ## [1.2.1] - 2022-03-30
 ### Added
 - LICENSE; ci: fix artifact for releases
