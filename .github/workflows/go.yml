@@ -204,7 +204,7 @@ jobs:
     - name: Capture release notes
       run: |
         chmod 744 ./changehelper
-        ./changehelper print-changes -v $(echo "${{ github.ref }}" | sed 's,refs/tags/v,,g') > ./RELEASE.txt
+        ./changehelper print-changes -v $(echo "${{ github.ref }}" | sed 's,refs/tags/release/v,,g') > ./RELEASE.txt
 
     - name: Release
       uses: softprops/action-gh-release@v0.1.14
