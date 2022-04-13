@@ -163,9 +163,9 @@ func resolveVersionFromGit(options NewVersionOptions, git gitCli, newChange *cha
 	}
 }
 
-func update() {
+func update(ignoreUnknown bool) {
 	var options UpdateOptions
-	parseOptions(&options)
+	parseOptions(&options, ignoreUnknown)
 
 	defaultVersion := semver.MustParse("0.0.0")
 
