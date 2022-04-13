@@ -68,9 +68,9 @@ func main() {
 	case "print-changes":
 		printChanges()
 	case "update":
-		update()
+		update(false)
 	case "update-and-release":
-		update()
+		update(true)
 		fallthrough
 	case "release":
 		release()
