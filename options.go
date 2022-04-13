@@ -7,10 +7,18 @@ import (
 	"github.com/jessevdk/go-flags"
 )
 
-func parseOptions(options interface{}) {
+func parseOptions(options interface{}, ignoreUnknown ...bool) {
 	sLogger.Debug("loading cli options into interface")
 	sLogger.Debug(reflect.TypeOf(options).String())
-	if _, err := flags.ParseArgs(options, os.Args); err != nil {
+
+	var parser *flags.Parser
+	if len(ignoreUnknown) > 0 && ignoreUnknown[0] {
+		parser = flags.NewParser(&options, flags.IgnoreUnknown)
+	} else {
+		parser = flags.NewParser(&options, flags.None)
+	}
+
+	if _, err := parser.ParseArgs(os.Args); err != nil {
 		if parseErr, ok := err.(*flags.Error); ok {
 			if parseErr.Type == flags.ErrHelp {
 				os.Exit(0)
