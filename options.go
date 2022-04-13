@@ -13,9 +13,9 @@ func parseOptions(options interface{}, ignoreUnknown ...bool) {
 
 	var parser *flags.Parser
 	if len(ignoreUnknown) > 0 && ignoreUnknown[0] {
-		parser = flags.NewParser(&options, flags.IgnoreUnknown)
+		parser = flags.NewParser(options, flags.IgnoreUnknown)
 	} else {
-		parser = flags.NewParser(&options, flags.None)
+		parser = flags.NewParser(options, flags.None)
 	}
 
 	if _, err := parser.ParseArgs(os.Args); err != nil {
