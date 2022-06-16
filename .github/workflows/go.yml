@@ -103,6 +103,7 @@ jobs:
       matrix:
         arch:
         - amd64
+        - arm64
     needs:
     - update
     steps:
@@ -122,6 +123,7 @@ jobs:
       matrix:
         arch:
         - amd64
+        - arm64
     needs:
     - update
     steps:
