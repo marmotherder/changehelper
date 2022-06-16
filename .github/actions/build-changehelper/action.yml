@@ -27,7 +27,7 @@ runs:
     run: go build
     env:
       GOARCH: ${{ inputs.arch }}
-      CGO_ENABLED: 1
+      CGO_ENABLED: 0
       GOOS: ${{ inputs.os }}
     shell: bash
 
