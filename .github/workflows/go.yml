@@ -103,24 +103,6 @@ jobs:
       matrix:
         arch:
         - amd64
-    needs:
-    - update
-    steps:
-
-    - uses: actions/checkout@v2
-
-    - id: Build_changehelper
-      uses: ./.github/actions/build-changehelper
-      with:
-        os: linux
-        arch: ${{ matrix.arch }}
-        binary: changehelper
-        
-  build-linux-arm:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        arch:
         - arm64
     needs:
     - update
