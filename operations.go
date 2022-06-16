@@ -432,7 +432,7 @@ func release() {
 		sLogger.Fatal(err.Error())
 	}
 
-	errs := createOrUpdateReleaseRefs(options.UseTags, options.GitBranch, options.GitPrefix, options.VersionPrefix, version, git)
+	errs := createOrUpdateReleaseRefs(options.UseTags, branch, options.GitPrefix, options.VersionPrefix, version, git)
 
 	if len(errs) > 0 {
 		for _, err := range errs {
