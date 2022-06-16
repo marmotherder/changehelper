@@ -15,10 +15,6 @@ jobs:
 
   update:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch:
-        - amd64
     steps:
 
     - uses: actions/checkout@v2
@@ -140,10 +136,6 @@ jobs:
 
   update-changelog:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch:
-        - amd64
     if: startsWith(github.ref, 'refs/heads/main')
     needs:
     - build-windows
