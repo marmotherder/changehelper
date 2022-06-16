@@ -29,6 +29,7 @@ runs:
       GOARCH: ${{ inputs.arch }}
       CGO_ENABLED: 1
       GOOS: ${{ inputs.os }}
+      CC: aarch64-linux-gnu-gcc
     shell: bash
 
   - name: Create release dir
