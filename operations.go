@@ -130,6 +130,7 @@ func resolveVersionFromGit(options NewVersionOptions, git gitCli, newChange *cha
 			options.GitWorkingDirectory,
 			options.ChangelogFile,
 			options.Depth,
+			options.AuditClogFile,
 			newChange,
 			git,
 		)
@@ -218,11 +219,17 @@ func update(ignoreUnknown bool) {
 			options.GitWorkingDirectory,
 			options.ChangelogFile,
 			options.Depth,
+			options.AuditClogFile,
 			unreleased,
 			git,
 		)
 		if err != nil {
 			sLogger.Fatal(err.Error())
+		}
+
+		if len(unreleased.Added) == 0 && len(unreleased.Changed) == 0 && len(unreleased.Deprecated) == 0 && len(unreleased.Removed) == 0 && len(unreleased.Fixed) == 0 && len(unreleased.Security) == 0 {
+			sLogger.Info("No trackable changes to be added to the changelog file. Exiting without changes.")
+			os.Exit(0)
 		}
 
 		unreleased.renderChangeText(*increment)
@@ -269,6 +276,7 @@ func loadConventionalCommitsToChange(
 	dir,
 	changelogFile string,
 	depth int,
+	auditClogFile bool,
 	change *change,
 	git gitCli,
 ) (*string, error) {
@@ -279,25 +287,25 @@ func loadConventionalCommitsToChange(
 	}
 
 	for fixed, message := range fixedUnique {
-		if dir+fixed != changelogFile {
+		if dir+fixed != changelogFile || auditClogFile {
 			change.Fixed = append(change.Fixed, fmt.Sprintf("- %s; %s", fixed, message))
 		}
 	}
 
 	for added, message := range addedUnique {
-		if dir+added != changelogFile {
+		if dir+added != changelogFile || auditClogFile {
 			change.Added = append(change.Added, fmt.Sprintf("- %s; %s", added, message))
 		}
 	}
 
 	for changed, message := range changedUnique {
-		if dir+changed != changelogFile {
+		if dir+changed != changelogFile || auditClogFile {
 			change.Changed = append(change.Changed, fmt.Sprintf("- %s; %s", changed, message))
 		}
 	}
 
 	for removed, message := range removedUnique {
-		if dir+removed != changelogFile {
+		if dir+removed != changelogFile || auditClogFile {
 			change.Removed = append(change.Removed, fmt.Sprintf("- %s; %s", removed, message))
 		}
 	}
