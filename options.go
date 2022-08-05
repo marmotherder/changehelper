@@ -58,6 +58,7 @@ type NewVersionOptions struct {
 	Fixed                     []string `short:"x" long:"fixed" description:"What was fixed in this new release?"`
 	Security                  []string `short:"e" long:"security" description:"What was security related in this new release?"`
 	Depth                     int      `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
+	AuditClogFile             bool     `short:"u" long:"audit-changelog-file" description:"If there are changes to the changelog file, should these be included in the changelog?"`
 }
 
 type PrintChangesOptions struct {
@@ -77,8 +78,9 @@ type GitLookupOptions struct {
 type UpdateOptions struct {
 	GlobalOptions
 	GitLookupOptions
-	GitBranch string `short:"b" long:"git-branch" description:"Git branch to run against"`
-	Depth     int    `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
+	GitBranch     string `short:"b" long:"git-branch" description:"Git branch to run against"`
+	Depth         int    `short:"d" long:"depth" description:"How deep to go when checking that all commits are conventional" default:"0"`
+	AuditClogFile bool   `short:"u" long:"audit-changelog-file" description:"If there are changes to the changelog file, should these be included in the changelog?"`
 }
 
 // ReleaseOptions are the options used by the release operation
