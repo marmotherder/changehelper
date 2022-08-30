@@ -3,81 +3,151 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/blang/semver"
 	"github.com/jessevdk/go-flags"
+	"github.com/leodido/go-conventionalcommits"
+	"github.com/leodido/go-conventionalcommits/parser"
 )
 
-const operationsText = `Usage = changehelper [global options] <operation>
-
-Operations:
-
-new-version				Create a new in progress version interactively
-print-current-version			Print the current version in the changelog file
-print-unreleased-version		Print the unreleased version based on the changelog file, or conventional commit(s)
-print-current-changes			Print the most recent changes recorded in changelog that have been released
-print-unreleased-changes		Print the most recent unreleased changes recorded in changelog
-print-changes				Print any changes matching the input version
-update					Update the version in the changelog file
-release					Commit and push changes to git, ie changes to the changelog, and branches
-update-and-release			Run update, followed by release in order
-enforce-unreleased			Validate that there is a pending unreleased change
-enforce-conventional-commits		Enforce that all commits adhere to conventional commit standards
-version					Print the tool version
-
-Global Options:
-
-LogLevel		-l, --log-level		Logging level verbosity, set at increasing level by calling the flag multiple times, eg. -lll will run at Info level. By default, runs at Fatal. The levels supported, in ascending verbosity are Fatal, Error, Warn, Info, and Debug.
-ChangelogFile		-f, --changelog-file 	Location of the changelog file at a path. Defaults to ./CHANGELOG.md
-Help			-h, --help		Print the help options for the selected operation`
+const (
+	majorIncrement = 4
+	minorIncrement = 3
+	patchIncrement = 2
+	buildIncrement = 1
+)
 
 func main() {
-	var options GlobalOptions
-	parser := flags.NewParser(&options, flags.IgnoreUnknown)
-	args, err := parser.ParseArgs(os.Args)
+	opts := Options{}
+	if _, err := flags.Parse(&opts); err != nil {
+		if parseErr, ok := err.(*flags.Error); ok {
+			if parseErr.Type == flags.ErrHelp {
+				os.Exit(0)
+			}
+		}
+		fmt.Println(err)
+	}
+
+	setupLogger(len(opts.LogLevel))
+
+	machineOptions := []conventionalcommits.MachineOption{
+		conventionalcommits.WithTypes(conventionalcommits.TypesConventional),
+		conventionalcommits.WithBestEffort(),
+	}
+
+	git := &gitCli{
+		WorkingDirectory: opts.WorkingDirectory,
+	}
+
+	if opts.Remote != nil {
+		git.Remote = *opts.Remote
+	} else {
+		if err := git.getRemote(); err != nil {
+			sLogger.Fatal("was unable to find a git remote")
+		}
+	}
+
+	h := &handler{
+		options:   opts,
+		ccMachine: parser.NewMachine(machineOptions...),
+		git:       git,
+	}
+
+	refs, err := h.getReleaseRefs()
 	if err != nil {
-		handleArgsErr(err)
+		sLogger.Fatal(err)
 	}
 
-	if len(args) < 2 {
-		fmt.Println(operationsText)
-		os.Exit(execError)
-	}
+	scopedRefs := refsToOrderedScopedVersions(refs)
 
-	if setupErr := setupLogger(len(options.LogLevel)); setupErr != nil {
-		sLogger.Fatal(err.Error())
-	}
+	for scope, refs := range scopedRefs {
+		prefix := ""
+		if scope != "" {
+			prefix = scope + "/"
+		}
 
-	operation := args[1]
+		lastReleasedCommit, err := h.getLastCommitOnRef(prefix + refs[0].ver)
+		if err != nil || lastReleasedCommit == nil {
+			sLogger.Errorf("failed to get latest commit for scope %s", scope)
+			continue
+		}
 
-	switch operation {
+		trimmedLastReleasedCommit := strings.TrimSpace(*lastReleasedCommit)
+		commits, err := h.listCommits(trimmedLastReleasedCommit)
+		if err != nil {
+			sLogger.Errorf("failed to list commits after %s for scope %s", trimmedLastReleasedCommit, commits)
+			continue
+		}
 
-	case "enforce-unreleased":
-		enforceUnreleased(options.ChangelogFile)
-	case "enforce-conventional-commits":
-		enforceConventionalCommits()
-	case "new-version":
-		newVersion()
-	case "print-current-version":
-		printCurrentVersion(options.ChangelogFile)
-	case "print-unreleased-version":
-		printUnreleasedVersion(options.ChangelogFile)
-	case "print-current-changes":
-		printCurrentChanges(options.ChangelogFile)
-	case "print-unreleased-changes":
-		printUnreleasedChanges(options.ChangelogFile)
-	case "print-changes":
-		printChanges()
-	case "update":
-		update(false)
-	case "update-and-release":
-		update(true)
-		fallthrough
-	case "release":
-		release()
-	case "version":
-		fmt.Println(version)
-	default:
-		fmt.Println(operationsText)
-		os.Exit(execError)
+		incomingVersion := semver.MustParse(refs[0].sver.String())
+		switch h.determineIncrementFromCommits(commits) {
+		case majorIncrement:
+			incomingVersion.Major++
+		case minorIncrement:
+			incomingVersion.Minor++
+		case patchIncrement:
+			incomingVersion.Patch++
+		case buildIncrement:
+			incomingVersion.Build = append(incomingVersion.Build, opts.BuildID)
+		}
+
+		if opts.Prerelease {
+			prereleaseVer := uint64(1)
+
+			if len(incomingVersion.Pre) > 0 {
+				if incomingVersion.Pre[0].IsNum {
+					prereleaseVer = incomingVersion.Pre[0].VersionNum
+				} else {
+					splitPrerelease := strings.Split(incomingVersion.Pre[0].VersionStr, "-")
+					splitPrereleaseVer := splitPrerelease[len(splitPrerelease)-1]
+					splitPrereleaseVerParsed, err := strconv.ParseUint(splitPrereleaseVer, 10, 64)
+					if err != nil {
+						sLogger.Infof("could not parse number on existing prerelease version %s", splitPrereleaseVer)
+						sLogger.Info(err)
+					} else {
+						prereleaseVer = splitPrereleaseVerParsed
+					}
+				}
+			}
+
+			if opts.PrereleasePrefix != nil {
+				incomingVersion.Pre = append(incomingVersion.Pre, semver.PRVersion{
+					VersionStr: fmt.Sprintf("%s-%d", *opts.PrereleasePrefix, prereleaseVer),
+					IsNum:      false,
+				})
+			} else {
+				incomingVersion.Pre = append(incomingVersion.Pre, semver.PRVersion{
+					VersionNum: prereleaseVer,
+					IsNum:      true,
+				})
+			}
+		}
+
+		if !incomingVersion.Equals(refs[0].sver) {
+			sb := strings.Builder{}
+			if opts.BranchPrefix != nil {
+				sb.WriteString(fmt.Sprintf("%s/", *opts.BranchPrefix))
+			}
+			sb.WriteString(prefix)
+			if opts.VersionPrefix != nil {
+				sb.WriteString(*opts.VersionPrefix)
+			}
+			sb.WriteString(incomingVersion.String())
+
+			releaseRef := sb.String()
+
+			if !opts.DryRun {
+				refType := "heads"
+				if opts.Tags {
+					refType = "tags"
+				}
+
+				h.git.forcePushHashToRef(trimmedLastReleasedCommit, releaseRef, refType)
+			} else {
+				sLogger.Infof("would have created a release for %s", releaseRef)
+			}
+		}
 	}
 }
