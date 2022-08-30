@@ -18,8 +18,8 @@ type handler struct {
 }
 
 func (h handler) getBranchPrefix() string {
-	if h.options.BranchPrefix != nil {
-		return *h.options.BranchPrefix
+	if h.options.ReleasePrefix != nil {
+		return *h.options.ReleasePrefix
 	}
 	return ""
 }

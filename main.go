@@ -85,10 +85,16 @@ func main() {
 		switch h.determineIncrementFromCommits(commits) {
 		case majorIncrement:
 			incomingVersion.Major++
+			incomingVersion.Minor = 0
+			incomingVersion.Patch = 0
+			incomingVersion.Build = []string{}
 		case minorIncrement:
 			incomingVersion.Minor++
+			incomingVersion.Patch = 0
+			incomingVersion.Build = []string{}
 		case patchIncrement:
 			incomingVersion.Patch++
+			incomingVersion.Build = []string{}
 		case buildIncrement:
 			incomingVersion.Build = append(incomingVersion.Build, opts.BuildID)
 		}
@@ -127,8 +133,8 @@ func main() {
 
 		if !incomingVersion.Equals(refs[0].sver) {
 			sb := strings.Builder{}
-			if opts.BranchPrefix != nil {
-				sb.WriteString(fmt.Sprintf("%s/", *opts.BranchPrefix))
+			if opts.ReleasePrefix != nil {
+				sb.WriteString(fmt.Sprintf("%s/", *opts.ReleasePrefix))
 			}
 			sb.WriteString(prefix)
 			if opts.VersionPrefix != nil {

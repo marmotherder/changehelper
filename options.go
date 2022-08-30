@@ -5,7 +5,7 @@ type Options struct {
 	DryRun           bool    `short:"d" long:"dry-run" description:"Is this a dry run?"`
 	WorkingDirectory string  `short:"w" long:"workdir" description:"Working directory of the git repository" default:"./"`
 	Branch           *string `short:"b" long:"branch" description:"(Optional) Git branch to run against, otherwise looks for default"`
-	BranchPrefix     *string `short:"r" long:"branch-prefix" description:"(Optional) Prefix to give to released branches" default:"release"`
+	ReleasePrefix    *string `short:"r" long:"branch-prefix" description:"(Optional) Prefix to give to released branches" default:"release"`
 	Remote           *string `short:"o" long:"remote" description:"(Optional) Git remote name, otherwise looks for default"`
 	Prerelease       bool    `short:"p" long:"prerelease" description:"Is this a prerelease?"`
 	PrereleasePrefix *string `short:"e" long:"pr-prefix" description:"(Optional) Prefix for prereleases" default:"prerelease"`
