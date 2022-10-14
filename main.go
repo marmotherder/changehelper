@@ -28,5 +28,7 @@ func main() {
 		os.Exit(0)
 	case "release":
 		mustUpdateReleaseVersions(gOpts)
+	case "version":
+		fmt.Println(version)
 	}
 }
