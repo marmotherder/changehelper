@@ -18,5 +18,3 @@ require (
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
 )
-
-replace github.com/marmotherder/go-semverhandler => ../marmotherder/go-semverhandler/
