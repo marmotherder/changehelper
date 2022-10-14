@@ -26,8 +26,6 @@ func main() {
 	case "print-next-version":
 		fmt.Print(mustGetNextVersion(gOpts))
 		os.Exit(0)
-	case "update-changelog":
-
 	case "release":
 		mustUpdateReleaseVersions(gOpts)
 	}
