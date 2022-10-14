@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/marmotherder/go-gitcliwrapper v0.0.0-20220901082338-aaec7e386b73
-	github.com/marmotherder/go-semverhandler v0.0.0-20220912152611-9c43b1c31b4e
+	github.com/marmotherder/go-semverhandler v0.0.0-20221014172527-cbcd4c372ed7
 	go.uber.org/zap v1.23.0
 )
 
