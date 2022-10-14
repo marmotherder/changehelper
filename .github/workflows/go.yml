@@ -3,12 +3,12 @@ name: Go
 on:
   push:
     branches:
-    - main
+    - version2
     tags:
     - release/v**
   pull_request:
     branches:
-    - main
+    - version2
   workflow_dispatch:
 
 jobs:
@@ -45,10 +45,10 @@ jobs:
 
     - name: Set version
       run: |
-        chmod 755 ./changehelper && ./changehelper update -t -llll
-        CURRENT_VERSION=$(./changehelper print-current-version)
+        chmod 755 ./changehelper
+        CURRENT_VERSION=$(./changehelper print-next-version)
         sed -i "s,0.0.0,$CURRENT_VERSION,g" version.go
-      if: startsWith(github.ref, 'refs/heads/main')
+      if: startsWith(github.ref, 'refs/heads/version2')
       shell: bash
 
     - name: Capture version
@@ -68,11 +68,6 @@ jobs:
       with:
         name: version
         path: version.go
-
-    - uses: actions/upload-artifact@v2
-      with:
-        name: changelog
-        path: CHANGELOG.md
 
   build-windows:
     runs-on: ubuntu-latest
@@ -136,7 +131,7 @@ jobs:
 
   update-changelog:
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/heads/main')
+    if: startsWith(github.ref, 'refs/heads/version2')
     needs:
     - build-windows
     - build-linux
