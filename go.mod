@@ -5,8 +5,8 @@ go 1.19
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/marmotherder/go-gitcliwrapper v0.0.0-20220901082338-aaec7e386b73
-	github.com/marmotherder/go-semverhandler v0.0.0-20221014172527-cbcd4c372ed7
+	github.com/marmotherder/go-gitcliwrapper v0.0.0-20221014174201-4fcccb6fd6e2
+	github.com/marmotherder/go-semverhandler v0.0.0-20221014174332-2a05aaa13efd
 	go.uber.org/zap v1.23.0
 )
 
