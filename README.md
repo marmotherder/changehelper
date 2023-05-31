@@ -164,3 +164,5 @@ By default, will attempt to resolve commits after the last change to the changel
 ### **version**
 
 Print the curent version of the tool, no options.
+
+DEMO
